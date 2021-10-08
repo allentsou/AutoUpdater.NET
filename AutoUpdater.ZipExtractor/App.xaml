@@ -1,0 +1,15 @@
+﻿<Application x:Class="AutoUpdater.ZipExtractor.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:AutoUpdater.ZipExtractor"
+             Startup="Application_Startup">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+            </ResourceDictionary.MergedDictionaries>
+
+            <local:ErrorColorConverter x:Key="ECConverter" />
+
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

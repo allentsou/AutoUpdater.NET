@@ -1,0 +1,47 @@
+﻿<Window x:Class="AutoUpdater.ZipExtractor.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:AutoUpdater.ZipExtractor"
+        xmlns:vm="clr-namespace:AutoUpdater.ZipExtractor.ViewModel"
+        mc:Ignorable="d"
+        Title="{Binding WindowTitle}" Height="220" Width="505" ResizeMode="NoResize" WindowStartupLocation="CenterScreen" Topmost="True" WindowStyle="ToolWindow"
+        d:DataContext="{d:DesignInstance vm:MainWindowViewModel, IsDesignTimeCreatable=True}" 
+        >
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="100"></ColumnDefinition>
+            <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+        <Image Grid.Column="0" VerticalAlignment="Top" Source="./ZipExtractor.png" Margin="0 20" Stretch="None"  />
+
+        <Grid Grid.Row="0" Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"></RowDefinition>
+                <RowDefinition Height="Auto"></RowDefinition>
+                <RowDefinition Height="*"></RowDefinition>
+            </Grid.RowDefinitions>
+
+            <Label Grid.Row="0" Content="{Binding CurrentStepText}" VerticalAlignment="Center"></Label>
+            <StackPanel Grid.Row="0" HorizontalAlignment="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="10 0">
+                <TextBlock Text="{Binding ProgressText}"></TextBlock>
+            </StackPanel>
+
+            <ProgressBar Grid.Row="1" Height="20" Value="{Binding ProgressBarValue}" Margin="0 0 5 0" />
+
+            <ListBox Name="listFiles" Grid.Row="2" ItemsSource="{Binding FileList}" BorderThickness="0" 
+                     ScrollViewer.HorizontalScrollBarVisibility="Auto" Margin="0 5 5 5" 
+                     Background="#FFFAFAFA" 
+                     Loaded="listFiles_Loaded" Unloaded="listFiles_Unloaded" FontSize="11">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding  Msg}" Foreground="{Binding IsError, Converter={StaticResource ECConverter}}" ></TextBlock>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+
+
+    </Grid>
+</Window>

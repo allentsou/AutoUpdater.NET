@@ -1,0 +1,14 @@
+﻿{
+  "NewVersion": null,
+  "PackageUrl": "http://172.24.26.38/Deploy/update/WarrMaker/WarrMaker.zip",
+  "ChangeLogUrl": null,
+  "IsMandatory": false,
+  "BackupOldFile": true,
+  "ExtractorInfo": {
+    "WindowTitle": "測試123",
+    "CurrentVersion": null,
+    "WaitingCloseProcessID": 0,
+    "ProcessPath": null,
+    "IsSuccess": false
+  }
+}
