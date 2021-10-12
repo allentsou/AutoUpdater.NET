@@ -1,14 +1,14 @@
 ﻿{
-  "NewVersion": null,
-  "PackageUrl": "http://172.24.26.38/Deploy/update/WarrMaker/WarrMaker.zip",
-  "ChangeLogUrl": null,
+  "NewVersion": "1.2021.1008.1",
+  "PackageUrl": "http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/20211008.zip",
+  "ChangeLogUrl": "http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/ChangeLog.html",
   "IsMandatory": false,
   "BackupOldFile": true,
   "ExtractorInfo": {
-    "WindowTitle": "測試123",
-    "CurrentVersion": null,
-    "WaitingCloseProcessID": 0,
-    "ProcessPath": null,
-    "IsSuccess": false
+    "WindowTitle": "TestAPP 自動更新...",
+    "CurrentVersion": "1.2021.1008.0",
+    "ProcessPath": "D:\\Project\\AutoUpdaterCore\\TestWPF\\bin\\Debug\\netcoreapp3.1\\TestWPF.exe",
+    "IsExtractSuccess": true,
+    "ExtractTime": "2021-10-12T12:48:39.2199555+08:00"
   }
 }

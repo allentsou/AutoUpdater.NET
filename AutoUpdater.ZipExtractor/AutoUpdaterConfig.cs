@@ -49,7 +49,6 @@ namespace AutoUpdater.ZipExtractor
     {
         public string WindowTitle { get; set; }
         public string CurrentVersion { get; set; }
-        public int WaitingCloseProcessID { get; set; }
         public string ProcessPath { get; set; }
         public bool IsExtractSuccess { get; set; }
         public DateTime ExtractTime { get; set; }

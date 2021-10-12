@@ -5,11 +5,13 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:TestWPF"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow" Height="450" Width="800" WindowStartupLocation="CenterScreen">
     <Grid>
         <StackPanel>
             <Button Content="Save Config" Name="btnSaveConfig" Click="btnSaveConfig_Click"></Button>
             <Button Content="Start Update" Name="btnStartUpdate" Click="btnStartUpdate_Click"></Button>
+            <Button Content="Start Force Update" Name="btnStartForceUpdate" Click="btnStartForceUpdate_Click"></Button>
+            <Button Content="Start Update No ChgLog" Name="btnStartUpdateNoChgLog" Click="btnStartUpdateNoChgLog_Click"></Button>
         </StackPanel>
         
     </Grid>

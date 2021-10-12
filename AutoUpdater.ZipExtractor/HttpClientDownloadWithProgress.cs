@@ -70,6 +70,8 @@ namespace AutoUpdater.ZipExtractor
                         TriggerProgressChanged(totalDownloadSize, totalBytesRead);
                 }
                 while (isMoreToRead);
+                fileStream.Flush();
+                fileStream.Close();
             }
         }
 

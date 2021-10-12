@@ -44,6 +44,7 @@ namespace AutoUpdater.ZipExtractor
             {
                 Action action = () =>
                 {
+                    logger.Error($"ShowMsgBoxAndExit Msg={msg}");
                     if (MessageBoxResult.OK == MessageBox.Show(window, msg, "", MessageBoxButton.OK, MessageBoxImage.Error))
                     {
                         Environment.Exit(Environment.ExitCode);
@@ -104,7 +105,7 @@ namespace AutoUpdater.ZipExtractor
 
 
                 #region Waiting app closed
-                string procPath = null;
+
                 try
                 {
                     vm.UpdateStepText(MainWindowViewModel.enumStep.WaitingAppClose);
@@ -113,68 +114,63 @@ namespace AutoUpdater.ZipExtractor
                     vm.AddMsg(Localization.LocalizationResources.ResourceManager.GetString("LabelWaitClose"));
 
                     int timeout = 60 * 1000;
-                    logger.Info($"Get process by ID: {config.ExtractorInfo.WaitingCloseProcessID}");
-                    Process waitingProc = null;
-                    if (config.ExtractorInfo.WaitingCloseProcessID != 0)
+                    if (!string.IsNullOrWhiteSpace(config.ExtractorInfo.ProcessPath))
                     {
-                        try
+                        logger.Info($"Start search process and wait exit : {config.ExtractorInfo.ProcessPath}");
+                        bool isFound = false;
+                        int loopCount = 0;
+                        foreach (Process proc in Process.GetProcesses())
                         {
-                            waitingProc = Process.GetProcessById(config.ExtractorInfo.WaitingCloseProcessID);
-                        }
-                        catch (Exception ex)
-                        {
-                            logger.Warn(ex);
-                        }
-                    }
-                    if (waitingProc != null)
-                    {
-                        try
-                        {
-                            procPath = waitingProc.MainModule.FileName;
-                            logger.Info($"WaitForExit,Path={procPath},Timeout={timeout}");
-                            vm.AddMsg(string.Format(Localization.LocalizationResources.ResourceManager.GetString("WaitingProcExit"), $"PID {config.ExtractorInfo.WaitingCloseProcessID}"));
-                            bool isClose = waitingProc.WaitForExit(timeout);
-                            if (!isClose)
+                            loopCount++;
+                            string procPath = null;
+                            int pid = 0;
+                            try
                             {
-                                logger.Warn($"WaitForExit Timeout, force kill...");
-                                vm.AddMsg(Localization.LocalizationResources.ResourceManager.GetString("ForceKillProc"));
-                                waitingProc.Kill();
+                                procPath = proc.MainModule.FileName;
+                                pid = proc.Id;
                             }
-                        }
-                        catch (Exception ex)
-                        {
-                            logger.Warn(ex);
-                        }
-                    }
-                    else
-                    {
-                        if (!string.IsNullOrWhiteSpace(config.ExtractorInfo.ProcessPath))
-                        {
-                            logger.Info($"process ID not found, Try to get process by path : {config.ExtractorInfo.WaitingCloseProcessID}");
-                            bool isFound = false;
-                            foreach (Process proc in Process.GetProcesses())
+                            catch (System.ComponentModel.Win32Exception win32ex)
                             {
-                                isFound = true;
-                                if (proc.MainModule.FileName == config.ExtractorInfo.ProcessPath)
+                                continue;
+                            }
+                            catch (Exception ex)
+                            {
+                                continue;
+                            }
+
+                            try
+                            {
+                                if (procPath == config.ExtractorInfo.ProcessPath)
                                 {
-                                    procPath = waitingProc.MainModule.FileName;
-                                    logger.Info($"WaitForExit,Path={procPath},Timeout={timeout}");
-                                    vm.AddMsg(string.Format(Localization.LocalizationResources.ResourceManager.GetString("WaitingProcExit"), procPath));
+                                    isFound = true;
+                                    logger.Info($"WaitForExit,PID={pid},Timeout={timeout},LoopCount={loopCount}");
+                                    vm.AddMsg(string.Format(Localization.LocalizationResources.ResourceManager.GetString("WaitingProcExit"), $"PID {pid}"));
                                     bool isClose = proc.WaitForExit(timeout);
                                     if (!isClose)
                                     {
-                                        logger.Warn($"WaitForExit Timeout, force kill...");
+                                        logger.Warn($"WaitForExit Timeout, Kill PID {pid}");
                                         vm.AddMsg(Localization.LocalizationResources.ResourceManager.GetString("ForceKillProc"));
                                         proc.Kill();
                                     }
                                 }
                             }
-                            if (!isFound)
+                            catch (Exception ex)
                             {
-                                logger.Error($"Not found.");
+                                logger.Error(ex, $"WaitForExit LoopCount={loopCount}");
+                                vm.AddMsg(ex.Message, true);
                             }
+
+                        }
+                        if (!isFound)
+                        {
+                            logger.Error($"Not found process,Path={config.ExtractorInfo.ProcessPath}");
                         }
                     }
+                    else
+                    {
+                        logger.Error("Config.ExtractorInfo.ProcessPath is NULL");
+                    }
+
                 }
                 catch (Exception ex)
                 {
@@ -185,12 +181,12 @@ namespace AutoUpdater.ZipExtractor
                 }
 
                 #endregion
-
+                Thread.Sleep(2000);
                 string baseDir = Misc.GaeBaseDirectory();
                 logger.Info($"BaseDir = {baseDir}");
 
                 #region Download ZIP package file
-                string fName = null;
+                string updateZIPPackageFilePath = null;
                 try
                 {
                     logger.Info($"Start Download : {config.PackageUrl}");
@@ -200,8 +196,8 @@ namespace AutoUpdater.ZipExtractor
                     vm.AddMsg(string.Format(Localization.LocalizationResources.ResourceManager.GetString("DownloadFile"), config.PackageUrl));
 
                     Uri uri = new Uri(config.PackageUrl);
-                    fName = Path.Combine(baseDir, System.IO.Path.GetFileName(uri.LocalPath));
-                    using (HttpClientDownloadWithProgress c = new HttpClientDownloadWithProgress(config.PackageUrl, fName))
+                    updateZIPPackageFilePath = Path.Combine(baseDir, System.IO.Path.GetFileName(uri.LocalPath));
+                    using (HttpClientDownloadWithProgress c = new HttpClientDownloadWithProgress(config.PackageUrl, updateZIPPackageFilePath))
                     {
                         c.ProgressChanged += (long? totalFileSize, long totalBytesDownloaded, double? progressPercentage, double kbPerSeconds) =>
                         {
@@ -224,7 +220,7 @@ namespace AutoUpdater.ZipExtractor
                         };
                         await c.StartDownload();
                     }
-                    logger.Info($"Done.");
+                    logger.Info($"Download done.");
                 }
                 catch (Exception ex)
                 {
@@ -240,6 +236,7 @@ namespace AutoUpdater.ZipExtractor
                 #region Backup
                 try
                 {
+                    logger.Info("Backup...");
                     vm.UpdateStepText(MainWindowViewModel.enumStep.Backup);
                     vm.ProgressBarValue = 0;
                     vm.ProgressText = "";
@@ -247,25 +244,28 @@ namespace AutoUpdater.ZipExtractor
                     List<string> needBackupFilePath = new List<string>();
                     if (config.BackupOldFile)
                     {
-                        //using (ZipArchive zipArch = ZipFile.OpenRead(fName))
-                        using (ZipArchive zipArch = new ZipArchive(File.Open(fName, FileMode.Open), ZipArchiveMode.Read, false, zipArchiveEncoding))
+                        using (FileStream fs = File.Open(updateZIPPackageFilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
                         {
-                            foreach (var entry in zipArch.Entries)
+                            using (ZipArchive zipArch = new ZipArchive(fs, ZipArchiveMode.Read, false, zipArchiveEncoding))
                             {
-                                bool isDirectory = (entry.FullName.EndsWith('\\') || entry.FullName.EndsWith('/'));
-                                if (!isDirectory)
+                                foreach (var entry in zipArch.Entries)
                                 {
-                                    string path = Path.Combine(baseDir, entry.FullName);
-                                    if (File.Exists(path))
+                                    bool isDirectory = (entry.FullName.EndsWith('\\') || entry.FullName.EndsWith('/'));
+                                    if (!isDirectory)
                                     {
-                                        needBackupFilePath.Add(path);
-                                    }
-                                    else
-                                    {
-                                        Debug.WriteLine(path);
+                                        string path = Path.Combine(baseDir, entry.FullName);
+                                        if (File.Exists(path))
+                                        {
+                                            needBackupFilePath.Add(path);
+                                        }
+                                        else
+                                        {
+                                            Debug.WriteLine(path);
+                                        }
                                     }
                                 }
                             }
+                            fs.Close();
                         }
 
                         int needBackupFileCount = needBackupFilePath.Count;
@@ -275,27 +275,30 @@ namespace AutoUpdater.ZipExtractor
                             string zipFile = Path.Combine(baseDir, $"AutoUpdaterBackup\\{DateTime.Now:yyyyMMdd_HHmmss}.zip");
                             logger.Info($"Need backup file count : {needBackupFileCount}, Backup path : {zipFile}");
                             int addFileCount = 0;
-                            using (FileStream fs = new FileStream(zipFile, FileMode.Create))
-                            using (ZipArchive zipArch = new ZipArchive(fs, ZipArchiveMode.Create))
+                            using (FileStream fs = File.Open(zipFile, FileMode.Create, FileAccess.Write))
                             {
-                                foreach (string bakPath in needBackupFilePath)
+                                using (ZipArchive zipArch = new ZipArchive(fs, ZipArchiveMode.Create))
                                 {
-                                    addFileCount++;
-                                    vm.ProgressBarValue = Convert.ToInt32(Convert.ToDouble(addFileCount) / Convert.ToDouble(needBackupFileCount) * 100d);
-                                    vm.ProgressText = $"{addFileCount} / {needBackupFileCount}";
-
-                                    logger.Info($"Adding ({addFileCount}/{needBackupFileCount}) : {bakPath}");
-                                    string removeBaseDirPath = bakPath.Replace(baseDir, "");
-                                    vm.AddMsg(string.Format(Localization.LocalizationResources.ResourceManager.GetString("AddingFile"), removeBaseDirPath));
-
-                                    ZipArchiveEntry entry = zipArch.CreateEntry(removeBaseDirPath);
-                                    using (var zipStream = entry.Open())
+                                    foreach (string bakPath in needBackupFilePath)
                                     {
-                                        byte[] bytes = File.ReadAllBytes(bakPath);
-                                        await zipStream.WriteAsync(bytes, 0, bytes.Length);
+                                        addFileCount++;
+                                        vm.ProgressBarValue = Convert.ToInt32(Convert.ToDouble(addFileCount) / Convert.ToDouble(needBackupFileCount) * 100d);
+                                        vm.ProgressText = $"{addFileCount} / {needBackupFileCount}";
+
+                                        logger.Info($"Adding ({addFileCount}/{needBackupFileCount}) : {bakPath}");
+                                        string removeBaseDirPath = bakPath.Replace(baseDir, "").TrimStart('\\');
+                                        vm.AddMsg(string.Format(Localization.LocalizationResources.ResourceManager.GetString("AddingFile"), removeBaseDirPath));
+
+                                        ZipArchiveEntry entry = zipArch.CreateEntry(removeBaseDirPath);
+                                        using (var zipStream = entry.Open())
+                                        {
+                                            byte[] bytes = File.ReadAllBytes(bakPath);
+                                            await zipStream.WriteAsync(bytes, 0, bytes.Length);
+                                        }
+                                        logger.Info($"Done.");
                                     }
-                                    logger.Info($"Done.");
                                 }
+                                fs.Close();
                             }
                         }
                         else
@@ -307,6 +310,7 @@ namespace AutoUpdater.ZipExtractor
                     {
                         logger.Info($"BackupOldFile = False, Skip backup files.");
                     }
+                    logger.Info("Backup done.");
                 }
                 catch (Exception ex)
                 {
@@ -324,42 +328,57 @@ namespace AutoUpdater.ZipExtractor
                     vm.UpdateStepText(MainWindowViewModel.enumStep.Extract);
                     vm.ProgressBarValue = 0;
                     vm.ProgressText = "";
-
-                    //using (ZipArchive zipArch = ZipFile.OpenRead(fName))
-                    using (ZipArchive zipArch = new ZipArchive(File.Open(fName, FileMode.Open), ZipArchiveMode.Read, false, zipArchiveEncoding))
+                    logger.Info($"Start Extractor {updateZIPPackageFilePath}");
+                    using (FileStream fs = File.Open(updateZIPPackageFilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
                     {
-                        int totalCount = zipArch.Entries.Count;
-                        int extractCount = 0;
-                        foreach (var entry in zipArch.Entries)
+                        using (ZipArchive zipArch = new ZipArchive(fs, ZipArchiveMode.Read, false, zipArchiveEncoding))
                         {
-                            extractCount++;
-                            vm.ProgressBarValue = Convert.ToInt32(Convert.ToDouble(extractCount) / Convert.ToDouble(totalCount) * 100d);
-                            vm.ProgressText = $"{extractCount} / {totalCount}";
-
-                            bool isDirectory = (entry.FullName.EndsWith('\\') || entry.FullName.EndsWith('/'));
-                            if (!isDirectory)
+                            int totalCount = zipArch.Entries.Count;
+                            int extractCount = 0;
+                            foreach (var entry in zipArch.Entries)
                             {
-                                string path = Path.Combine(baseDir, entry.FullName);
-                                logger.Info($"Extracting : {path}");
-                                vm.AddMsg(string.Format(Localization.LocalizationResources.ResourceManager.GetString("ExtractingFile"), entry.FullName));
-                                try
+                                extractCount++;
+                                vm.ProgressBarValue = Convert.ToInt32(Convert.ToDouble(extractCount) / Convert.ToDouble(totalCount) * 100d);
+                                vm.ProgressText = $"{extractCount} / {totalCount}";
+
+                                bool isDirectory = (entry.FullName.EndsWith('\\') || entry.FullName.EndsWith('/'));
+                                if (!isDirectory)
                                 {
-                                    string dir = Path.GetDirectoryName(path);
-                                    if (dir != null && !Directory.Exists(dir))
+                                    string path = Path.Combine(baseDir, entry.FullName);
+                                    logger.Info($"Extracting : {path}");
+                                    vm.AddMsg(string.Format(Localization.LocalizationResources.ResourceManager.GetString("ExtractingFile"), entry.FullName));
+                                    try
                                     {
-                                        Directory.CreateDirectory(dir);
+                                        string dir = Path.GetDirectoryName(path);
+                                        if (dir != null && !Directory.Exists(dir))
+                                        {
+                                            Directory.CreateDirectory(dir);
+                                        }
+                                        entry.ExtractToFile(path, true);
                                     }
-                                    entry.ExtractToFile(path, true);
+                                    catch (Exception ex)
+                                    {
+                                        logger.Error(ex);
+                                        vm.AddMsg($"{entry.FullName} {ex.Message}", true);
+                                        errorCounts++;
+                                    }
+                                    logger.Info($"Done.");
                                 }
-                                catch (Exception ex)
-                                {
-                                    logger.Error(ex);
-                                    vm.AddMsg($"{entry.FullName} {ex.Message}", true);
-                                    errorCounts++;
-                                }
-                                logger.Info($"Done.");
                             }
                         }
+                        fs.Close();
+                    }
+                    logger.Info($"Extractor done.");
+
+                    try
+                    {
+                        logger.Info($"Delete {updateZIPPackageFilePath}");
+                        File.Delete(updateZIPPackageFilePath);
+                        logger.Info($"Delete done.");
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.Error(ex, $"Delete {updateZIPPackageFilePath}");
                     }
                 }
                 catch (Exception ex)
@@ -372,10 +391,11 @@ namespace AutoUpdater.ZipExtractor
                 }
                 #endregion
 
-                if (procPath != null && File.Exists(procPath))
+                if (config.ExtractorInfo.ProcessPath != null && File.Exists(config.ExtractorInfo.ProcessPath))
                 {
-                    logger.Info($"Start {procPath}");
-                    Process.Start(procPath);
+                    //string fn = Path.GetFileName(config.ExtractorInfo.ProcessPath);
+                    logger.Info($"Start {config.ExtractorInfo.ProcessPath}");
+                    Process.Start(config.ExtractorInfo.ProcessPath);
                 }
                 else
                 {
@@ -395,10 +415,12 @@ namespace AutoUpdater.ZipExtractor
                 config.ExtractorInfo.ExtractTime = DateTime.Now;
                 AutoUpdaterConfig.Save(config);
 
+                vm.AddMsg("Done");
                 logger.Info("All done, Close application.");
-#if !DEBUG
+                //#if !DEBUG
+                Thread.Sleep(1500);
                 Environment.Exit(Environment.ExitCode);
-#endif
+                //#endif
             });
         }
     }

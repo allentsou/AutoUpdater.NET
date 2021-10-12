@@ -6,43 +6,38 @@
         xmlns:local="clr-namespace:AutoUpdater"
         xmlns:loc="clr-namespace:AutoUpdater.Localization"
         mc:Ignorable="d"
-        Title="UpdateForm" Height="800" Width="750" ResizeMode="NoResize" WindowStartupLocation="CenterScreen">
+        Title="{x:Static loc:LocalizationResources.WindowTitle}" Height="800" Width="750" ResizeMode="NoResize" WindowStartupLocation="CenterScreen" Topmost="True" >
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="100"/>
-            <ColumnDefinition />
-        </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-            <RowDefinition Height="80"></RowDefinition>
-            <RowDefinition Height="*"></RowDefinition>
-            <RowDefinition Height="60"></RowDefinition>
+            <RowDefinition Height="80" x:Name="row1"></RowDefinition>
+            <RowDefinition Height="*"  x:Name="row2"></RowDefinition>
+            <RowDefinition Height="50" x:Name="row3"></RowDefinition>
         </Grid.RowDefinitions>
-
-        <Image Grid.Column="0" Grid.Row="0" Grid.RowSpan="2" VerticalAlignment="Top" Source="./update.png" Margin="0 10" Stretch="None" Name="leftSideIcon"   />
-
-        <StackPanel Orientation="Vertical" Grid.Column="1" Grid.Row="0" Margin="5 5 5 5" Background="LightGray" >
-            <StackPanel.Resources>
-                <Style TargetType="TextBlock">
-                    <Setter Property="Margin">
-                        <Setter.Value>
-                            <Thickness Top="10"></Thickness>
-                        </Setter.Value>
-                    </Setter>
-                </Style>
-            </StackPanel.Resources>
-            <TextBlock Text="新版 {0} 已經發行！" FontSize="16" FontWeight="Bold" Name="Title1"></TextBlock>
-            <TextBlock Text=" {{0}} {{1}} 已經發行。本機目前的版本是 {2}。是否立即進行更新？" FontSize="14" Name="Title2"></TextBlock>
+        <StackPanel Orientation="Horizontal" Grid.Row="0" Height="80" VerticalAlignment="Top">
+            <Image Source="./update.png"  Stretch="None" Name="AppIcon" Width="100" VerticalAlignment="Center" />
+            <StackPanel Orientation="Vertical" VerticalAlignment="Center" >
+                <StackPanel.Resources>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Margin">
+                            <Setter.Value>
+                                <Thickness Top="10"></Thickness>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </StackPanel.Resources>
+                <TextBlock Text="{x:Static loc:LocalizationResources.Title1}" FontSize="16" FontWeight="Bold" Name="Title1"></TextBlock>
+                <TextBlock Text="{x:Static loc:LocalizationResources.Title2}" FontSize="14" Name="Title2"></TextBlock>
+            </StackPanel>
         </StackPanel>
+        
+        <WebBrowser x:Name="chgLogBrowser" Grid.Row="1">
+        </WebBrowser>
 
-        <WebBrowser Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1" x:Name="chgLogBrowser" Height="Auto" Margin="0 0 0 0" VerticalAlignment="Top"></WebBrowser>
-        <!--<StackPanel Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1" Orientation="Vertical" Name="ChangeLogPanel" Height="Auto">
-            --><!--<TextBlock Text="變更紀錄：" FontSize="14" FontWeight="Bold" VerticalAlignment="Top" Margin="10 0 0 0"></TextBlock>--><!--
-            <WebBrowser x:Name="WebBrowser" Height="Auto" Margin="0 5 0 0" VerticalAlignment="Top"></WebBrowser>
-        </StackPanel>-->
-
-        <StackPanel Grid.Row="2" Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="忽略" FontSize="18" Width="140" Margin="0 0 80 0" Name="btnIgnore"></Button>
-            <Button Content="更新" FontSize="18" Width="140" Margin="0 0 20 0" Name="btnUpdate"></Button>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Grid.Row="2">
+            <Button Content="{x:Static loc:LocalizationResources.ButtonIgnore}" FontSize="18" Width="140" Margin="0 0 80 0" Name="btnIgnore"></Button>
+            <Button Content="{x:Static loc:LocalizationResources.ButtonUpdate}" FontSize="18" Width="140" Margin="0 0 20 0" Name="btnUpdate"></Button>
         </StackPanel>
     </Grid>
+
+
 </Window>

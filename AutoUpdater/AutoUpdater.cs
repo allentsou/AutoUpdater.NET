@@ -5,7 +5,8 @@ using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Windows;
-using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace AutoUpdater
 {
@@ -24,7 +25,7 @@ namespace AutoUpdater
 
         static UpdateForm form = null;
         static string zipExtractorPath = null;
-        public static bool CheckUpdate(Window owner, string configURL, bool forceUpdate = false, string appName = null)
+        public static bool CheckUpdate(Window owner, string configURL, bool forceUpdate = false, string appName = null,byte[] appIcon = null,string appIconUri = null)
         {
             try
             {
@@ -58,7 +59,6 @@ namespace AutoUpdater
                 config.ExtractorInfo.WindowTitle = $"{appName} {Localization.LocalizationResources.ResourceManager.GetString("AutoUpdating")}";
                 config.ExtractorInfo.CurrentVersion = currentVersion.ToString();
                 config.ExtractorInfo.ProcessPath = Path.Combine(GaeBaseDirectory(), System.Diagnostics.Process.GetCurrentProcess().MainModule.ModuleName);
-                config.ExtractorInfo.WaitingCloseProcessID = Process.GetCurrentProcess().Id;
 
                 AutoUpdaterConfig.Save(config);
 
@@ -72,6 +72,18 @@ namespace AutoUpdater
                     form.Title = string.Format(Localization.LocalizationResources.ResourceManager.GetString("WindowTitle"), appName, config.NewVersion);//{0} {1} is available!
                     form.Title1.Text = string.Format(Localization.LocalizationResources.ResourceManager.GetString("Title1"), appName);//A new version of {0} is available!
                     form.Title2.Text = string.Format(Localization.LocalizationResources.ResourceManager.GetString("Title2"), appName, config.NewVersion, currentVersion);//{0} {1} is now available. You have version {2} installed. Would you like to download it now?
+                    //form.AppIcon.Source = Application.Current.Resources["Icon_Main"]
+                    if (appIcon != null)
+                    {
+                        form.AppIcon.Source = LoadImage(appIcon);
+                    }
+                    else if (!string.IsNullOrWhiteSpace(appIconUri))
+                    {
+                        //form.AppIcon.Source = new BitmapImage(new Uri("pack://application:,,,/Resources/Icon_Main.ico"));
+                        form.AppIcon.Source = new BitmapImage(new Uri(appIconUri));
+                    }
+
+
                     form.btnIgnore.Click += BtnIgnore_Click;
                     form.btnUpdate.Click += BtnUpdate_Click;
                     form.Closed += Form_Closed;
@@ -83,8 +95,8 @@ namespace AutoUpdater
                     {
                         //form.ChangeLogPanel.Visibility = Visibility.Hidden;
                         form.chgLogBrowser.Visibility = Visibility.Hidden;
-                        form.Width = 150;
-                        form.Height = 600;
+                        form.Height = form.Height - (form.Height - form.row1.Height.Value - form.row3.Height.Value) + 50;
+                        form.row2.Height = new GridLength(0, GridUnitType.Pixel);
                     }
                     form.Owner = owner;
                     form.ShowDialog();
@@ -99,6 +111,24 @@ namespace AutoUpdater
                 OnError?.Invoke(ex.Message, ex);
                 return false;
             }
+        }
+        private static BitmapImage LoadImage(byte[] imageData)
+        {
+            //https://stackoverflow.com/questions/9564174/convert-byte-array-to-image-in-wpf
+            if (imageData == null || imageData.Length == 0) return null;
+            var image = new BitmapImage();
+            using (var mem = new MemoryStream(imageData))
+            {
+                mem.Position = 0;
+                image.BeginInit();
+                image.CreateOptions = BitmapCreateOptions.PreservePixelFormat;
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                image.UriSource = null;
+                image.StreamSource = mem;
+                image.EndInit();
+            }
+            image.Freeze();
+            return image;
         }
 
         private static void Form_Closed(object sender, EventArgs e)
@@ -129,9 +159,11 @@ namespace AutoUpdater
         {
             try
             {
-                logger.Info($"Start {zipExtractorPath}");
-                var proc = Process.Start(zipExtractorPath);
-                Thread.Sleep(1000);//单ぃ穦本奔
+                string fn = Path.GetFileName(zipExtractorPath);
+                logger.Info($"Start {fn}");
+                var proc = Process.Start(fn);
+
+                Thread.Sleep(1500);//单ぃ穦本奔
                 if (NeedCloseApplication != null)
                 {
                     logger.Info($"Call NeedCloseApplication()");
@@ -140,7 +172,9 @@ namespace AutoUpdater
                 else
                 {
                     logger.Info($"Call Environment.Exit");
-                    //Environment.Exit(Environment.ExitCode);
+                    //#if !DEBUG
+                    Environment.Exit(Environment.ExitCode);
+                    //#endif
                 }
             }
             catch (Exception ex)
