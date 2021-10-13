@@ -44,7 +44,7 @@ namespace AutoUpdater.ZipExtractor
             {
                 Action action = () =>
                 {
-                    logger.Error($"ShowMsgBoxAndExit Msg={msg}");
+                    logger.Info($"ShowMsgBoxAndExit Msg={msg}");
                     if (MessageBoxResult.OK == MessageBox.Show(window, msg, "", MessageBoxButton.OK, MessageBoxImage.Error))
                     {
                         Environment.Exit(Environment.ExitCode);
@@ -76,7 +76,7 @@ namespace AutoUpdater.ZipExtractor
                 }
                 catch (Exception ex)
                 {
-                    logger.Error(ex);
+                    logger.Error(ex, "AutoUpdaterConfig.GetLocalFile()");
                     ShowMsgBoxAndExit(ex.Message);
                     return;
                 }
@@ -104,7 +104,7 @@ namespace AutoUpdater.ZipExtractor
                 #endregion
 
 
-                #region Waiting app closed
+                #region Waiting app close
 
                 try
                 {
@@ -116,7 +116,7 @@ namespace AutoUpdater.ZipExtractor
                     int timeout = 60 * 1000;
                     if (!string.IsNullOrWhiteSpace(config.ExtractorInfo.ProcessPath))
                     {
-                        logger.Info($"Start search process and wait exit : {config.ExtractorInfo.ProcessPath}");
+                        logger.Info($"Start search process and waiting close : {config.ExtractorInfo.ProcessPath}");
                         bool isFound = false;
                         int loopCount = 0;
                         foreach (Process proc in Process.GetProcesses())
@@ -174,14 +174,14 @@ namespace AutoUpdater.ZipExtractor
                 }
                 catch (Exception ex)
                 {
-                    logger.Error(ex);
+                    logger.Error(ex, "Waiting app close");
                     vm.AddMsg(ex.Message, true);
                     ShowMsgBoxAndExit(ex.Message);
                     return;
                 }
 
                 #endregion
-                Thread.Sleep(2000);
+                await Task.Delay(1000 * 2);
                 string baseDir = Misc.GaeBaseDirectory();
                 logger.Info($"BaseDir = {baseDir}");
 
@@ -224,7 +224,7 @@ namespace AutoUpdater.ZipExtractor
                 }
                 catch (Exception ex)
                 {
-                    logger.Error(ex);
+                    logger.Error(ex, $"Download {config.PackageUrl}");
                     vm.AddMsg(ex.Message, true);
                     ShowMsgBoxAndExit(ex.Message);
                     return;
@@ -314,7 +314,7 @@ namespace AutoUpdater.ZipExtractor
                 }
                 catch (Exception ex)
                 {
-                    logger.Error(ex);
+                    logger.Error(ex, "Backup");
                     vm.AddMsg(ex.Message, true);
                     errorCounts++;
                     ShowMsgBoxAndExit(ex.Message);
@@ -383,7 +383,7 @@ namespace AutoUpdater.ZipExtractor
                 }
                 catch (Exception ex)
                 {
-                    logger.Error(ex);
+                    logger.Error(ex, "Extractor");
                     vm.AddMsg(ex.Message, true);
                     errorCounts++;
                     ShowMsgBoxAndExit(ex.Message);
@@ -416,9 +416,9 @@ namespace AutoUpdater.ZipExtractor
                 AutoUpdaterConfig.Save(config);
 
                 vm.AddMsg("Done");
-                logger.Info("All done, Close application.");
+                logger.Info($"--------------AutoUpdater.ZipExtractor Close--------------");
                 //#if !DEBUG
-                Thread.Sleep(1500);
+                await Task.Delay(1500);
                 Environment.Exit(Environment.ExitCode);
                 //#endif
             });

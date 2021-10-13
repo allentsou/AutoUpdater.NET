@@ -1,19 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
+﻿using System.Windows;
 using System.Windows.Interop;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace TestWPF
 {
@@ -29,8 +15,6 @@ namespace TestWPF
 
         }
 
-
-
         private void btnSaveConfig_Click(object sender, RoutedEventArgs e)
         {
             //TestWPF.Properties.Resources.Icon_Main
@@ -40,30 +24,36 @@ namespace TestWPF
 
         private void btnStartUpdate_Click(object sender, RoutedEventArgs e)
         {
+            var window = new WindowInteropHelper(this);
             //Set Icon 1
-            //AutoUpdater.AutoUpdater.CheckUpdate(this, "http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/AutoUpdaterConfig.json", false, "ETF造市避險",
-            //    appIcon: TestWPF.Properties.Resources.Icon_Main);
-            
-            
+            AutoUpdater.AutoUpdater.CheckUpdate("http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/AutoUpdaterConfig.json", window.Handle, false, "TestApp1",
+                appIcon: TestWPF.Properties.Resources.Icon_Main);
+
+
             //Set Icon 2
-            AutoUpdater.AutoUpdater.CheckUpdate(this, "http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/AutoUpdaterConfig.json", false, "ETF造市避險",
-                appIconUri: "pack://application:,,,/Resources/Icon_Main.ico");
-            
-            
+            //AutoUpdater.AutoUpdater.CheckUpdate("http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/AutoUpdaterConfig.json", window.Handle, false, "TestApp2",
+            //    appIconUri: "pack://application:,,,/Resources/Icon_Main.ico");
+
+
             //No Icom
-            //AutoUpdater.AutoUpdater.CheckUpdate(this, "http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/AutoUpdaterConfig.json", false, "ETF造市避險");
+            //AutoUpdater.AutoUpdater.CheckUpdate("http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/AutoUpdaterConfig.json", window.Handle, false, "TestApp3");
         }
 
         private void btnStartForceUpdate_Click(object sender, RoutedEventArgs e)
         {
-            AutoUpdater.AutoUpdater.CheckUpdate(this, "http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/AutoUpdaterConfig.json", true, "TestAPP123");
+            var window = new WindowInteropHelper(this);
+            AutoUpdater.AutoUpdater.CheckUpdate("http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/AutoUpdaterConfig.json", window.Handle, true, "TestApp4");
         }
 
         private void btnStartUpdateNoChgLog_Click(object sender, RoutedEventArgs e)
         {
-            AutoUpdater.AutoUpdater.CheckUpdate(this, "http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/AutoUpdaterConfigNoChgLog.json", false, "TestAPP123");
+            var window = new WindowInteropHelper(this);
+            AutoUpdater.AutoUpdater.CheckUpdate("http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/AutoUpdaterConfigNoChgLog.json", window.Handle, false, "TestApp5");
         }
 
-
+        private void btnOpenChgLog_Click(object sender, RoutedEventArgs e)
+        {
+            AutoUpdater.AutoUpdater.OpenChangeLogInBrowser("http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/AutoUpdaterConfig.json");
+        }
     }
 }

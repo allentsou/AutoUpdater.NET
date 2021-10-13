@@ -3,6 +3,12 @@
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <UseWPF>true</UseWPF>
+    <Description>AutoUpdater For .Net Core WPF and WinForm applications</Description>
+    <Copyright>鄒瑞成 2021</Copyright>
+    <Version>1.2021.1013.1</Version>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageReleaseNotes>First Version</PackageReleaseNotes>
+    <Authors>鄒瑞成 2021</Authors>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,12 +29,21 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>LocalizationResources.resx</DependentUpon>
     </Compile>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Update="Localization\LocalizationResources.resx">
       <Generator>PublicResXFileCodeGenerator</Generator>
       <LastGenOutput>LocalizationResources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
 

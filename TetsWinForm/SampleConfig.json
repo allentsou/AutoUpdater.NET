@@ -1,0 +1,7 @@
+{
+  "NewVersion": "1.2021.1008.1",
+  "PackageUrl": "http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/TestWPF.zip",
+  "ChangeLogUrl": "http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/ChangeLog.html",
+  "IsMandatory": true,
+  "BackupOldFile": true
+}

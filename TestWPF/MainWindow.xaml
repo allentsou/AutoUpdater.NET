@@ -12,6 +12,7 @@
             <Button Content="Start Update" Name="btnStartUpdate" Click="btnStartUpdate_Click"></Button>
             <Button Content="Start Force Update" Name="btnStartForceUpdate" Click="btnStartForceUpdate_Click"></Button>
             <Button Content="Start Update No ChgLog" Name="btnStartUpdateNoChgLog" Click="btnStartUpdateNoChgLog_Click"></Button>
+            <Button Content="Open ChangeLog in browser" Name="btnOpenChgLog" Click="btnOpenChgLog_Click"></Button>
         </StackPanel>
         
     </Grid>

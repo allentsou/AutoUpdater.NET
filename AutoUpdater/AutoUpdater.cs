@@ -5,12 +5,12 @@ using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Windows;
-using System.Windows.Media;
+using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 
 namespace AutoUpdater
 {
-    public class AutoUpdater
+    public static class AutoUpdater
     {
         static Logger logger = LogManager.GetCurrentClassLogger();
 
@@ -25,7 +25,7 @@ namespace AutoUpdater
 
         static UpdateForm form = null;
         static string zipExtractorPath = null;
-        public static bool CheckUpdate(Window owner, string configURL, bool forceUpdate = false, string appName = null,byte[] appIcon = null,string appIconUri = null)
+        public static bool CheckUpdate(string configURL, IntPtr? windowHandle = null, bool forceUpdate = false, string appName = null, byte[] appIcon = null, string appIconUri = null)
         {
             try
             {
@@ -37,19 +37,13 @@ namespace AutoUpdater
                 Version currentVersion = mainAssembly.GetName().Version;
                 if (newVersion <= currentVersion)
                 {
-                    logger.Info($"Already latest Version.(Current={currentVersion},New={newVersion})");
+                    logger.Info($"Already latest version.(Current={currentVersion},New={newVersion})");
                     return false;
                 }
-                logger.Info($"Has new Version.(Current={currentVersion},New={newVersion})");
+                logger.Info($"Has new version.(Current={currentVersion},New={newVersion})");
                 string baseDir = GaeBaseDirectory();
                 zipExtractorPath = Path.Combine(baseDir, "AutoUpdater.ZipExtractor.exe");
-                if (!File.Exists(zipExtractorPath))
-                {
-                    string msg = $"{zipExtractorPath} not found.";
-                    logger.Error(msg);
-                    OnError?.Invoke(msg, null);
-                    return false;
-                }
+                File.WriteAllBytes(zipExtractorPath, Properties.Resources.AutoUpdater_ZipExtractor);
 
                 if (string.IsNullOrEmpty(appName))
                 {
@@ -82,7 +76,10 @@ namespace AutoUpdater
                         //form.AppIcon.Source = new BitmapImage(new Uri("pack://application:,,,/Resources/Icon_Main.ico"));
                         form.AppIcon.Source = new BitmapImage(new Uri(appIconUri));
                     }
-
+                    if (config.IsMandatory)
+                    {
+                        form.btnIgnore.Visibility = Visibility.Hidden;
+                    }
 
                     form.btnIgnore.Click += BtnIgnore_Click;
                     form.btnUpdate.Click += BtnUpdate_Click;
@@ -98,20 +95,44 @@ namespace AutoUpdater
                         form.Height = form.Height - (form.Height - form.row1.Height.Value - form.row3.Height.Value) + 50;
                         form.row2.Height = new GridLength(0, GridUnitType.Pixel);
                     }
-                    form.Owner = owner;
+                    if (windowHandle != null)
+                    {
+                        WindowInteropHelper helper = new WindowInteropHelper(form);
+                        helper.Owner = windowHandle.Value;
+                    }
                     form.ShowDialog();
                 }
-                //UpdateForm form = new UpdateForm();
-
                 return true;
             }
             catch (Exception ex)
             {
-                logger.Error(ex);
+                logger.Error(ex, $"CheckUpdate Url={configURL}");
                 OnError?.Invoke(ex.Message, ex);
                 return false;
             }
         }
+
+        public static void OpenChangeLogInBrowser(string configURL)
+        {
+            try
+            {
+                AutoUpdaterConfig config = AutoUpdaterConfig.GetRemoteFile(configURL);
+                if (string.IsNullOrWhiteSpace(config.ChangeLogUrl))
+                {
+                    logger.Warn("ChangeLogUrl is empty.");
+                }
+                else
+                {
+                    //https://brockallen.com/2016/09/24/process-start-for-urls-on-net-core/
+                    Process.Start(new ProcessStartInfo("cmd", $"/c start {config.ChangeLogUrl}") { CreateNoWindow = true });
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "OpenChangeLogInBrowser");
+            }
+        }
+
         private static BitmapImage LoadImage(byte[] imageData)
         {
             //https://stackoverflow.com/questions/9564174/convert-byte-array-to-image-in-wpf
@@ -179,7 +200,7 @@ namespace AutoUpdater
             }
             catch (Exception ex)
             {
-                logger.Error(ex);
+                logger.Error(ex, "StartUpdateAndExit");
                 OnError?.Invoke(ex.Message, ex);
             }
         }

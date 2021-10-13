@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows.Interop;
 
 namespace TetsWinForm
 {
@@ -19,7 +20,9 @@ namespace TetsWinForm
 
         private void button1_Click(object sender, EventArgs e)
         {
-            AutoUpdater.AutoUpdater.CheckUpdate(null, "http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/AutoUpdaterConfig.json", false, "ETF造市避險",
+            //var window = new WindowInteropHelper(this);
+
+            AutoUpdater.AutoUpdater.CheckUpdate("http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/AutoUpdaterConfig.json", this.Handle, false, "ETF造市避險",
                 null);
         }
     }
