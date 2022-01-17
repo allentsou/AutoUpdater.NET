@@ -26,13 +26,13 @@ namespace TestWPF
         {
             var window = new WindowInteropHelper(this);
             //Set Icon 1
-            AutoUpdater.AutoUpdater.CheckUpdate("http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/AutoUpdaterConfig.json", window.Handle, false, "TestApp1",
-                appIcon: TestWPF.Properties.Resources.Icon_Main);
+            //AutoUpdater.AutoUpdater.CheckUpdate("http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/AutoUpdaterConfig.json", window.Handle, false, "TestApp1",
+            //    appIcon: TestWPF.Properties.Resources.Icon_Main);
 
 
             //Set Icon 2
-            //AutoUpdater.AutoUpdater.CheckUpdate("http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/AutoUpdaterConfig.json", window.Handle, false, "TestApp2",
-            //    appIconUri: "pack://application:,,,/Resources/Icon_Main.ico");
+            AutoUpdater.AutoUpdater.CheckUpdate("http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/AutoUpdaterConfig.json", window.Handle, false, "TestApp2",
+                appIconUri: "pack://application:,,,/Resources/Icon_Main.ico");
 
 
             //No Icom

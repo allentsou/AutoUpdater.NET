@@ -8,7 +8,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Resources\Icon_Main.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\AutoUpdater\AutoUpdater.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\Icon_Main.ico" />
   </ItemGroup>
 
   <ItemGroup>

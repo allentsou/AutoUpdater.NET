@@ -67,14 +67,21 @@ namespace AutoUpdater
                     form.Title1.Text = string.Format(Localization.LocalizationResources.ResourceManager.GetString("Title1"), appName);//A new version of {0} is available!
                     form.Title2.Text = string.Format(Localization.LocalizationResources.ResourceManager.GetString("Title2"), appName, config.NewVersion, currentVersion);//{0} {1} is now available. You have version {2} installed. Would you like to download it now?
                     //form.AppIcon.Source = Application.Current.Resources["Icon_Main"]
-                    if (appIcon != null)
+                    try
                     {
-                        form.AppIcon.Source = LoadImage(appIcon);
+                        if (appIcon != null)
+                        {
+                            form.AppIcon.Source = LoadImage(appIcon);
+                        }
+                        else if (!string.IsNullOrWhiteSpace(appIconUri))
+                        {
+                            //form.AppIcon.Source = new BitmapImage(new Uri("pack://application:,,,/Resources/Icon_Main.ico"));
+                            form.AppIcon.Source = new BitmapImage(new Uri(appIconUri));
+                        }
                     }
-                    else if (!string.IsNullOrWhiteSpace(appIconUri))
+                    catch (Exception ex)
                     {
-                        //form.AppIcon.Source = new BitmapImage(new Uri("pack://application:,,,/Resources/Icon_Main.ico"));
-                        form.AppIcon.Source = new BitmapImage(new Uri(appIconUri));
+                        logger.Error(ex, "Load AppIcon");
                     }
                     if (config.IsMandatory)
                     {

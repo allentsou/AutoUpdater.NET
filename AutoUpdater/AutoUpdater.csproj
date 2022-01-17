@@ -5,7 +5,7 @@
     <UseWPF>true</UseWPF>
     <Description>AutoUpdater For .Net Core WPF and WinForm applications</Description>
     <Copyright>鄒瑞成 2021</Copyright>
-    <Version>1.2021.1013.1</Version>
+    <Version>1.2022.0117.0</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageReleaseNotes>First Version</PackageReleaseNotes>
     <Authors>鄒瑞成 2021</Authors>
