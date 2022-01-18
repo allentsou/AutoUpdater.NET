@@ -250,7 +250,7 @@ namespace AutoUpdater.ZipExtractor
                             {
                                 foreach (var entry in zipArch.Entries)
                                 {
-                                    bool isDirectory = (entry.FullName.EndsWith('\\') || entry.FullName.EndsWith('/'));
+                                    bool isDirectory = (entry.FullName.EndsWith("\\") || entry.FullName.EndsWith("/"));
                                     if (!isDirectory)
                                     {
                                         string path = Path.Combine(baseDir, entry.FullName);
@@ -341,7 +341,7 @@ namespace AutoUpdater.ZipExtractor
                                 vm.ProgressBarValue = Convert.ToInt32(Convert.ToDouble(extractCount) / Convert.ToDouble(totalCount) * 100d);
                                 vm.ProgressText = $"{extractCount} / {totalCount}";
 
-                                bool isDirectory = (entry.FullName.EndsWith('\\') || entry.FullName.EndsWith('/'));
+                                bool isDirectory = (entry.FullName.EndsWith("\\") || entry.FullName.EndsWith("/"));
                                 if (!isDirectory)
                                 {
                                     string path = Path.Combine(baseDir, entry.FullName);
