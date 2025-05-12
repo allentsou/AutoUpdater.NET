@@ -2,10 +2,10 @@
 
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
-		<TargetFramework>net6.0-windows</TargetFramework>
+		<TargetFramework>net8.0-windows7.0</TargetFramework>
 		<!--<TargetFrameworks>net48</TargetFrameworks>-->
 		<UseWPF>true</UseWPF>
-		<Version>1.2021.1013.1</Version>
+		<Version>1.2025.0512.1</Version>
 		<PlatformTarget>AnyCPU</PlatformTarget>
 		<DebugType>embedded</DebugType>
 	</PropertyGroup>
