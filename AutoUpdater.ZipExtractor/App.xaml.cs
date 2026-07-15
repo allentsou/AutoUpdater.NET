@@ -1,5 +1,4 @@
 ﻿using AutoUpdater.ZipExtractor.ViewModel;
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -17,7 +16,7 @@ namespace AutoUpdater.ZipExtractor
     /// </summary>
     public partial class App : Application
     {
-        static Logger logger = LogManager.GetCurrentClassLogger();
+        private static SimpleLogger logger = new SimpleLogger();
 
         App()
         {
@@ -163,7 +162,7 @@ namespace AutoUpdater.ZipExtractor
                         }
                         if (!isFound)
                         {
-                            logger.Error($"Not found process,Path={config.ExtractorInfo.ProcessPath}");
+                            logger.Warn($"Not found process,Path={config.ExtractorInfo.ProcessPath}");
                         }
                     }
                     else

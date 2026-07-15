@@ -5,17 +5,13 @@
 		<TargetFramework>net8.0-windows7.0</TargetFramework>
 		<!--<TargetFrameworks>net48</TargetFrameworks>-->
 		<UseWPF>true</UseWPF>
-		<Version>1.2025.0512.1</Version>
+		<Version>1.2026.0715.2</Version>
 		<PlatformTarget>AnyCPU</PlatformTarget>
 		<DebugType>embedded</DebugType>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<None Remove="ZipExtractor.png" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<PackageReference Include="NLog" Version="4.7.13" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -40,9 +36,6 @@
 	<ItemGroup>
 		<None Update="AutoUpdaterConfig.json">
 			<CopyToOutputDirectory>Never</CopyToOutputDirectory>
-		</None>
-		<None Update="NLog.config">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
 		<None Update="RunILMerge.bat">
 		  <CopyToOutputDirectory>Never</CopyToOutputDirectory>
