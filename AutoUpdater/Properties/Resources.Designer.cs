@@ -65,7 +65,7 @@ namespace AutoUpdater.Properties {
         /// </summary>
         internal static byte[] AutoUpdater_ZipExtractor {
             get {
-                object obj = ResourceManager.GetObject("AutoUpdater_ZipExtractor", resourceCulture);
+                object obj = ResourceManager.GetObject("AutoUpdater.ZipExtractor", resourceCulture);
                 return ((byte[])(obj));
             }
         }

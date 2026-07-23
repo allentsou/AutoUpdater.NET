@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Windows.Xps;
 
 namespace AutoUpdater.ZipExtractor
 {
@@ -46,10 +47,7 @@ namespace AutoUpdater.ZipExtractor
 
         public void Error(Exception ex, string context = "")
         {
-            string message = string.IsNullOrEmpty(context)
-                ? $"{ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}"
-                : $"{context} - {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}";
-            WriteLog("ERROR", message);
+            WriteLog("ERROR", $"{context}{Environment.NewLine}{ex?.ToString()}");
         }
 
         private void WriteLog(string level, string message)

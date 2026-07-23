@@ -417,7 +417,14 @@ namespace AutoUpdater.ZipExtractor
                 vm.AddMsg("Done");
                 logger.Info($"--------------AutoUpdater.ZipExtractor Close--------------");
                 //#if !DEBUG
-                await Task.Delay(1500);
+                if (errorCounts > 0)
+                {
+                    await Task.Delay(30 * 1000);
+                }
+                else
+                {
+                    await Task.Delay(1500);
+                }
                 Environment.Exit(Environment.ExitCode);
                 //#endif
             });

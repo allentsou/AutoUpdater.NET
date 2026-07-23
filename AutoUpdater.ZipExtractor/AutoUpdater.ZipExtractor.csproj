@@ -5,7 +5,7 @@
 		<TargetFramework>net8.0-windows7.0</TargetFramework>
 		<!--<TargetFrameworks>net48</TargetFrameworks>-->
 		<UseWPF>true</UseWPF>
-		<Version>1.2026.0715.2</Version>
+		<Version>1.2026.0723.0</Version>
 		<PlatformTarget>AnyCPU</PlatformTarget>
 		<DebugType>embedded</DebugType>
 	</PropertyGroup>

@@ -5,7 +5,7 @@
     <UseWPF>true</UseWPF>
     <Description>AutoUpdater For .Net Core WPF and WinForm applications</Description>
     <Copyright>鄒瑞成 2021</Copyright>
-    <Version>1.2026.0715.1</Version>
+    <Version>1.2026.0723.2</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageReleaseNotes>First Version</PackageReleaseNotes>
     <Authors>鄒瑞成 2021</Authors>
@@ -45,6 +45,10 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Resources\" />
   </ItemGroup>
 
 </Project>

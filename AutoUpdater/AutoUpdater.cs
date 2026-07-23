@@ -2,7 +2,9 @@ using NLog;
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Reflection;
+using System.Text;
 using System.Threading;
 using System.Windows;
 using System.Windows.Interop;
@@ -42,8 +44,41 @@ namespace AutoUpdater
                 }
                 logger.Info($"Has new version.(Current={currentVersion},New={newVersion})");
                 string baseDir = GaeBaseDirectory();
-                zipExtractorPath = Path.Combine(baseDir, "AutoUpdater.ZipExtractor.exe");
+                zipExtractorPath = Path.Combine(baseDir, "AutoUpdater.ZipExtractor.zip");
+                logger.Info($"Write zip extractor to: {zipExtractorPath}");
                 File.WriteAllBytes(zipExtractorPath, Properties.Resources.AutoUpdater_ZipExtractor);
+                using (FileStream fs = File.Open(zipExtractorPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                {
+                    using (ZipArchive zipArch = new ZipArchive(fs, ZipArchiveMode.Read, false, Encoding.ASCII))
+                    {
+                        int totalCount = zipArch.Entries.Count;
+                        foreach (var entry in zipArch.Entries)
+                        {
+                            bool isDirectory = (entry.FullName.EndsWith("\\") || entry.FullName.EndsWith("/"));
+                            if (!isDirectory)
+                            {
+                                string path = Path.Combine(baseDir, entry.FullName);
+                                try
+                                {
+                                    string dir = Path.GetDirectoryName(path);
+                                    if (dir != null && !Directory.Exists(dir))
+                                    {
+                                        Directory.CreateDirectory(dir);
+                                    }
+                                    logger.Info($"Extracting : {path}");
+                                    entry.ExtractToFile(path, true);
+                                }
+                                catch (Exception ex)
+                                {
+                                    logger.Error(ex);
+                                }
+                                logger.Info($"Done.");
+                            }
+                        }
+                    }
+                    logger.Info($"Done extracting zip extractor.");
+                    fs.Close();
+                }
 
                 if (string.IsNullOrEmpty(appName))
                 {
@@ -187,7 +222,7 @@ namespace AutoUpdater
         {
             try
             {
-                string fn = Path.GetFileName(zipExtractorPath);
+                string fn = Path.GetFileName(zipExtractorPath).Replace(".zip",".exe");
                 logger.Info($"Start {fn}");
                 var proc = Process.Start(fn);
 
