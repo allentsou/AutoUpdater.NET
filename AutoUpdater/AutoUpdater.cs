@@ -128,7 +128,7 @@ namespace AutoUpdater
                     form.Closed += Form_Closed;
                     if (!string.IsNullOrEmpty(config.ChangeLogUrl))
                     {
-                        form.chgLogBrowser.Navigate(config.ChangeLogUrl);
+                        form.chgLogBrowser.Navigate(config.ChangeLogUrl + $"?t={DateTime.UtcNow.Ticks}");
                     }
                     else
                     {
