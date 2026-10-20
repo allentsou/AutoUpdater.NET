@@ -2,6 +2,7 @@
 using System.IO;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace AutoUpdater
 {
@@ -48,9 +49,19 @@ namespace AutoUpdater
             return JsonSerializer.Deserialize<AutoUpdaterConfig>(json);
         }
 
+        public static async Task<AutoUpdaterConfig> GetRemoteFileAsync(string url)
+        {
+            string json = await MyHttpClient.HttpClient.GetStringAsync(url).ConfigureAwait(false);
+            return JsonSerializer.Deserialize<AutoUpdaterConfig>(json);
+        }
+
         public static void Save(AutoUpdaterConfig config)
         {
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(config, SaveOptions));
+            // Write to a temp file and swap it in, so a crash or kill never leaves a half-written JSON behind.
+            string path = FilePath;
+            string tempPath = path + ".tmp";
+            File.WriteAllText(tempPath, JsonSerializer.Serialize(config, SaveOptions));
+            File.Move(tempPath, path, true);
         }
     }
 
@@ -59,6 +70,10 @@ namespace AutoUpdater
         public string WindowTitle { get; set; }
         public string CurrentVersion { get; set; }
         public string ProcessPath { get; set; }
+        /// <summary>
+        /// PID of the application to wait for. 0 when written by an older library (then ProcessPath is matched instead).
+        /// </summary>
+        public int ProcessId { get; set; }
         public bool IsExtractSuccess { get; set; }
         public DateTime ExtractTime { get; set; }
     }

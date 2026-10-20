@@ -153,4 +153,8 @@
   <data name="WindowTitle" xml:space="preserve">
     <value>Upgrating...</value>
   </data>
+  <data name="VersionChange" xml:space="preserve">
+    <value>{0} to {1}</value>
+    <comment>Window title version change, {0} = current version, {1} = new version</comment>
+  </data>
 </root>

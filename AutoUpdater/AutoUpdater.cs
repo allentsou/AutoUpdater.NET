@@ -5,6 +5,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
@@ -29,14 +30,100 @@ namespace AutoUpdater
         static UpdateForm form = null;
         static string zipExtractorPath = null;
 
+        /// <summary>
+        /// Checks for a new version and shows the update window when there is one.
+        /// Must be called on the UI (STA) thread, and blocks it while the remote config is downloaded;
+        /// <see cref="CheckUpdateAsync"/> does neither.
+        /// </summary>
+        /// <returns>True when a new version is available (the update window was shown or the update started).</returns>
         public static bool CheckUpdate(string configURL, IntPtr? windowHandle = null, bool forceUpdate = false, string appName = null, byte[] appIcon = null, string appIconUri = null)
         {
+            AutoUpdaterConfig config;
             try
             {
                 logger.Info($"Get config file:{configURL}");
-                AutoUpdaterConfig config = AutoUpdaterConfig.GetRemoteFile(configURL)
-                    ?? throw new InvalidOperationException("Remote config file is empty.");
-                config.ExtractorInfo ??= new ExtractorInfoModel();
+                config = AutoUpdaterConfig.GetRemoteFile(configURL);
+            }
+            catch (Exception ex)
+            {
+                return HandleCheckUpdateError(ex, configURL);
+            }
+            return CheckUpdateCore(config, configURL, windowHandle, forceUpdate, appName, appIcon, appIconUri);
+        }
+
+        /// <summary>
+        /// Same as <see cref="CheckUpdate"/>, but downloads the remote config without blocking the calling thread
+        /// and can be called from any thread: the update window is always shown on a UI thread.
+        /// Completes after the update window has been closed.
+        /// </summary>
+        /// <returns>True when a new version is available (the update window was shown or the update started).</returns>
+        public static async Task<bool> CheckUpdateAsync(string configURL, IntPtr? windowHandle = null, bool forceUpdate = false, string appName = null, byte[] appIcon = null, string appIconUri = null)
+        {
+            SynchronizationContext callerContext = SynchronizationContext.Current;
+            AutoUpdaterConfig config;
+            try
+            {
+                logger.Info($"Get config file:{configURL}");
+                config = await AutoUpdaterConfig.GetRemoteFileAsync(configURL).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                return await RunOnUiThreadAsync(callerContext, () => HandleCheckUpdateError(ex, configURL)).ConfigureAwait(false);
+            }
+            return await RunOnUiThreadAsync(callerContext,
+                () => CheckUpdateCore(config, configURL, windowHandle, forceUpdate, appName, appIcon, appIconUri)).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Runs func on a UI (STA) thread: the WPF application's dispatcher, otherwise the caller's UI context
+        /// (e.g. WinForms), otherwise a dedicated STA thread.
+        /// </summary>
+        private static Task<bool> RunOnUiThreadAsync(SynchronizationContext callerContext, Func<bool> func)
+        {
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher != null)
+            {
+                return dispatcher.InvokeAsync(func).Task;
+            }
+
+            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            void Run()
+            {
+                try { tcs.SetResult(func()); }
+                catch (Exception ex) { tcs.SetException(ex); }
+            }
+
+            // The base SynchronizationContext just posts to the thread pool (MTA), which cannot host a WPF window.
+            if (callerContext != null && callerContext.GetType() != typeof(SynchronizationContext))
+            {
+                callerContext.Post(_ => Run(), null);
+            }
+            else
+            {
+                var thread = new Thread(Run) { IsBackground = true, Name = "AutoUpdaterUI" };
+                thread.SetApartmentState(ApartmentState.STA);
+                thread.Start();
+            }
+            return tcs.Task;
+        }
+
+        private static bool HandleCheckUpdateError(Exception ex, string configURL)
+        {
+            logger.Error(ex, $"CheckUpdate Url={configURL}");
+            OnError?.Invoke(ex.Message, ex);
+            return false;
+        }
+
+        private static bool CheckUpdateCore(AutoUpdaterConfig config, string configURL, IntPtr? windowHandle, bool forceUpdate, string appName, byte[] appIcon, string appIconUri)
+        {
+            try
+            {
+                if (config == null)
+                {
+                    throw new InvalidOperationException("Remote config file is empty.");
+                }
+                // ExtractorInfo is local state; never carry over values (e.g. an old IsExtractSuccess) from the remote file.
+                config.ExtractorInfo = new ExtractorInfoModel();
                 Version newVersion = new Version(config.NewVersion);
 
                 Assembly mainAssembly = Assembly.GetEntryAssembly();
@@ -64,7 +151,10 @@ namespace AutoUpdater
                 }
                 config.ExtractorInfo.WindowTitle = $"{appName} {Localization.LocalizationResources.ResourceManager.GetString("AutoUpdating")}";
                 config.ExtractorInfo.CurrentVersion = currentVersion.ToString();
-                config.ExtractorInfo.ProcessPath = Path.Combine(baseDir, Path.GetFileName(Environment.ProcessPath));
+                string processPath = Environment.ProcessPath;
+                config.ExtractorInfo.ProcessPath = processPath != null ? Path.Combine(baseDir, Path.GetFileName(processPath)) : null;
+                // The extractor waits for this PID; matching by path fails for e.g. "dotnet app.dll" or short/\\?\ paths.
+                config.ExtractorInfo.ProcessId = Environment.ProcessId;
 
                 AutoUpdaterConfig.Save(config);
 
@@ -80,9 +170,7 @@ namespace AutoUpdater
             }
             catch (Exception ex)
             {
-                logger.Error(ex, $"CheckUpdate Url={configURL}");
-                OnError?.Invoke(ex.Message, ex);
-                return false;
+                return HandleCheckUpdateError(ex, configURL);
             }
         }
 
@@ -115,14 +203,20 @@ namespace AutoUpdater
             form.btnIgnore.Click += BtnIgnore_Click;
             form.btnUpdate.Click += BtnUpdate_Click;
             form.Closed += Form_Closed;
-            if (!string.IsNullOrEmpty(config.ChangeLogUrl))
+            Uri changeLogUri = null;
+            if (!string.IsNullOrWhiteSpace(config.ChangeLogUrl) && !TryGetHttpUri(config.ChangeLogUrl, out changeLogUri))
             {
-                // Append a timestamp to bypass the cache (the URL may already contain a query string).
+                // An invalid change log URL must not prevent the update itself; just show no change log.
+                logger.Warn($"ChangeLogUrl is not a valid http(s) URL, change log is hidden: {config.ChangeLogUrl}");
+            }
+            if (changeLogUri != null)
+            {
+                // Append a timestamp to bypass the cache. UriBuilder keeps an existing query string and #fragment intact.
                 // The form additionally disables the WebView2 cache for the page's CSS/JS/images.
-                string separator = config.ChangeLogUrl.Contains('?') ? "&" : "?";
-                form.SetChangeLog(
-                    new Uri($"{config.ChangeLogUrl}{separator}t={DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}"),
-                    new Uri(config.ChangeLogUrl));
+                var builder = new UriBuilder(changeLogUri);
+                string query = builder.Query.TrimStart('?');
+                builder.Query = (query.Length > 0 ? query + "&" : "") + $"t={DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
+                form.SetChangeLog(builder.Uri, changeLogUri);
             }
             else
             {
@@ -171,9 +265,12 @@ namespace AutoUpdater
 
         /// <summary>
         /// Extracts the embedded AutoUpdater.ZipExtractor package next to the application and returns the path of its exe.
+        /// Throws when a file is missing afterwards (e.g. no write permission), so the error surfaces here instead of
+        /// when the user clicks "Update".
         /// </summary>
         private static string ExtractZipExtractor(string baseDir)
         {
+            var missingFiles = new System.Collections.Generic.List<string>();
             string fullBaseDir = Path.GetFullPath(baseDir);
             string baseDirWithSeparator = fullBaseDir.EndsWith(Path.DirectorySeparatorChar) ? fullBaseDir : fullBaseDir + Path.DirectorySeparatorChar;
             logger.Info($"Extract zip extractor to: {fullBaseDir}");
@@ -199,12 +296,27 @@ namespace AutoUpdater
                     }
                     catch (Exception ex)
                     {
+                        // A file locked by a still running extractor is fine as long as it exists.
                         logger.Error(ex, $"Extract {path}");
+                        if (!File.Exists(path))
+                        {
+                            missingFiles.Add(entry.FullName);
+                        }
                     }
                 }
             }
+
+            string exePath = Path.Combine(fullBaseDir, ZipExtractorExeName);
+            if (!File.Exists(exePath) && !missingFiles.Contains(ZipExtractorExeName))
+            {
+                missingFiles.Add(ZipExtractorExeName);
+            }
+            if (missingFiles.Count > 0)
+            {
+                throw new IOException($"Cannot write the updater to {fullBaseDir} (missing: {string.Join(", ", missingFiles)}). Check write permission of the application directory.");
+            }
             logger.Info("Done extracting zip extractor.");
-            return Path.Combine(fullBaseDir, ZipExtractorExeName);
+            return exePath;
         }
 
         private static BitmapImage LoadImage(byte[] imageData)
@@ -268,14 +380,49 @@ namespace AutoUpdater
                 }
                 else
                 {
-                    logger.Info($"Call Environment.Exit");
-                    Environment.Exit(Environment.ExitCode);
+                    ExitApplication();
                 }
             }
             catch (Exception ex)
             {
                 logger.Error(ex, "StartUpdateAndExit");
                 OnError?.Invoke(ex.Message, ex);
+            }
+        }
+
+        /// <summary>
+        /// Closes the host application. A WPF application is shut down normally (windows close and the Exit event
+        /// runs, so it can save its data); other hosts are ended with Environment.Exit. Because the extractor cannot
+        /// overwrite files of a running application, a watchdog still calls Environment.Exit if the normal shutdown
+        /// has not finished after 10 seconds.
+        /// </summary>
+        private static void ExitApplication()
+        {
+            Application app = Application.Current;
+            if (app == null)
+            {
+                logger.Info("Call Environment.Exit");
+                Environment.Exit(Environment.ExitCode);
+                return;
+            }
+
+            var watchdog = new Thread(() =>
+            {
+                Thread.Sleep(10000);
+                logger.Warn("Application did not exit within 10 seconds, call Environment.Exit");
+                Environment.Exit(Environment.ExitCode);
+            })
+            { IsBackground = true, Name = "AutoUpdaterExitWatchdog" };
+            watchdog.Start();
+
+            logger.Info("Call Application.Shutdown");
+            if (app.Dispatcher.CheckAccess())
+            {
+                app.Shutdown();
+            }
+            else
+            {
+                app.Dispatcher.BeginInvoke(new Action(() => app.Shutdown()));
             }
         }
 

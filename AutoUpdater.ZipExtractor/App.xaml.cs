@@ -50,6 +50,59 @@ namespace AutoUpdater.ZipExtractor
             Environment.Exit(exitCode);
         }
 
+        /// <summary>
+        /// Waits for the application with the given PID (written by the library) to exit.
+        /// </summary>
+        private static void WaitForAppExitByPid(int pid, int timeout, MainWindowViewModel vm)
+        {
+            Process proc;
+            try
+            {
+                proc = Process.GetProcessById(pid);
+            }
+            catch (ArgumentException)
+            {
+                logger.Info($"PID {pid} has already exited.");
+                return;
+            }
+
+            using (proc)
+            {
+                // Guard against PID reuse: the application started this extractor, so it must have started earlier.
+                try
+                {
+                    using (Process self = Process.GetCurrentProcess())
+                    {
+                        if (proc.StartTime > self.StartTime)
+                        {
+                            logger.Warn($"PID {pid} belongs to a process started after the extractor, the application has already exited.");
+                            return;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // StartTime is not accessible for e.g. elevated processes; assume it is the application.
+                    logger.Warn($"Cannot read StartTime of PID {pid}: {ex.Message}");
+                }
+
+                WaitForAppExit(proc, pid, timeout, vm);
+            }
+        }
+
+        private static void WaitForAppExit(Process proc, int pid, int timeout, MainWindowViewModel vm)
+        {
+            logger.Info($"WaitForExit,PID={pid},Timeout={timeout}");
+            vm.AddMsg(string.Format(Localization.LocalizationResources.ResourceManager.GetString("WaitingProcExit"), $"PID {pid}"));
+            if (!proc.WaitForExit(timeout))
+            {
+                logger.Warn($"WaitForExit Timeout, Kill PID {pid}");
+                vm.AddMsg(Localization.LocalizationResources.ResourceManager.GetString("ForceKillProc"));
+                proc.Kill();
+                proc.WaitForExit(timeout);
+            }
+        }
+
         private static void TryDeleteFile(string path)
         {
             if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
@@ -148,7 +201,9 @@ namespace AutoUpdater.ZipExtractor
                     // Show the version change, e.g. "TestApp2 自動更新 (0.0.0.0 to 0.0.0.1)"
                     if (!string.IsNullOrWhiteSpace(config.ExtractorInfo.CurrentVersion) && !string.IsNullOrWhiteSpace(config.NewVersion))
                     {
-                        title = $"{title.TrimEnd('.', '…', ' ')} ({config.ExtractorInfo.CurrentVersion} to {config.NewVersion})";
+                        string versionChange = string.Format(Localization.LocalizationResources.ResourceManager.GetString("VersionChange"),
+                            config.ExtractorInfo.CurrentVersion, config.NewVersion);
+                        title = $"{title.TrimEnd('.', '…', ' ')} ({versionChange})";
                     }
                     vm.WindowTitle = title;
                     logger.Info($"Get config file : {AutoUpdaterConfig.FileName}");
@@ -166,7 +221,11 @@ namespace AutoUpdater.ZipExtractor
                     vm.AddMsg(Localization.LocalizationResources.ResourceManager.GetString("LabelWaitClose"));
 
                     int timeout = 60 * 1000;
-                    if (!string.IsNullOrWhiteSpace(config.ExtractorInfo.ProcessPath))
+                    if (config.ExtractorInfo.ProcessId > 0)
+                    {
+                        WaitForAppExitByPid(config.ExtractorInfo.ProcessId, timeout, vm);
+                    }
+                    else if (!string.IsNullOrWhiteSpace(config.ExtractorInfo.ProcessPath))
                     {
                         logger.Info($"Start search process and waiting close : {config.ExtractorInfo.ProcessPath}");
                         bool isFound = false;
@@ -194,16 +253,7 @@ namespace AutoUpdater.ZipExtractor
                                     if (string.Equals(procPath, config.ExtractorInfo.ProcessPath, StringComparison.OrdinalIgnoreCase))
                                     {
                                         isFound = true;
-                                        logger.Info($"WaitForExit,PID={pid},Timeout={timeout},LoopCount={loopCount}");
-                                        vm.AddMsg(string.Format(Localization.LocalizationResources.ResourceManager.GetString("WaitingProcExit"), $"PID {pid}"));
-                                        bool isClose = proc.WaitForExit(timeout);
-                                        if (!isClose)
-                                        {
-                                            logger.Warn($"WaitForExit Timeout, Kill PID {pid}");
-                                            vm.AddMsg(Localization.LocalizationResources.ResourceManager.GetString("ForceKillProc"));
-                                            proc.Kill();
-                                            proc.WaitForExit(timeout);
-                                        }
+                                        WaitForAppExit(proc, pid, timeout, vm);
                                     }
                                 }
                                 catch (Exception ex)
@@ -220,7 +270,7 @@ namespace AutoUpdater.ZipExtractor
                     }
                     else
                     {
-                        logger.Error("Config.ExtractorInfo.ProcessPath is NULL");
+                        logger.Error("Config.ExtractorInfo has neither ProcessId nor ProcessPath");
                     }
 
                 }
@@ -459,6 +509,20 @@ namespace AutoUpdater.ZipExtractor
                 }
                 #endregion
 
+                // Save the result before restarting the application, so it can read it at startup.
+                config.ExtractorInfo.IsExtractSuccess = errorCounts == 0;
+                config.ExtractorInfo.ExtractTime = DateTime.Now;
+                try
+                {
+                    AutoUpdaterConfig.Save(config);
+                }
+                catch (Exception ex)
+                {
+                    logger.Error(ex, "Save config");
+                    vm.AddMsg(ex.Message, true);
+                    errorCounts++;
+                }
+
                 if (config.ExtractorInfo.ProcessPath != null && File.Exists(config.ExtractorInfo.ProcessPath))
                 {
                     logger.Info($"Start {config.ExtractorInfo.ProcessPath}");
@@ -481,18 +545,6 @@ namespace AutoUpdater.ZipExtractor
                 {
                     logger.Warn($"No path to start process.");
                 }
-
-                if (errorCounts > 0)
-                {
-                    config.ExtractorInfo.IsExtractSuccess = false;
-                }
-                else
-                {
-                    config.ExtractorInfo.IsExtractSuccess = true;
-                }
-
-                config.ExtractorInfo.ExtractTime = DateTime.Now;
-                AutoUpdaterConfig.Save(config);
 
                 string doneMsg = errorCounts > 0
                     ? $"Done - {string.Format(Localization.LocalizationResources.ResourceManager.GetString("ErrorCountMsg"), errorCounts)}"

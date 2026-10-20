@@ -151,6 +151,15 @@ namespace AutoUpdater.ZipExtractor.Localization {
         }
         
         /// <summary>
+        ///   查詢類似 {0} to {1} 的當地語系化字串。
+        /// </summary>
+        public static string VersionChange {
+            get {
+                return ResourceManager.GetString("VersionChange", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   查詢類似 Waiting {0} eixt... 的當地語系化字串。
         /// </summary>
         public static string WaitingProcExit {

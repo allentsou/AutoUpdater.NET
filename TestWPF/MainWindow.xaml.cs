@@ -39,6 +39,22 @@ namespace TestWPF
             //AutoUpdater.AutoUpdater.CheckUpdate("http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/AutoUpdaterConfig.json", window.Handle, false, "TestApp3");
         }
 
+        private async void btnStartUpdateAsync_Click(object sender, RoutedEventArgs e)
+        {
+            // The UI stays responsive while the config is downloaded.
+            var window = new WindowInteropHelper(this);
+            btnStartUpdateAsync.IsEnabled = false;
+            try
+            {
+                await AutoUpdater.AutoUpdater.CheckUpdateAsync("http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/AutoUpdaterConfig.json", window.Handle, false, "TestApp2",
+                    appIconUri: "pack://application:,,,/Resources/Icon_Main.ico");
+            }
+            finally
+            {
+                btnStartUpdateAsync.IsEnabled = true;
+            }
+        }
+
         private void btnStartForceUpdate_Click(object sender, RoutedEventArgs e)
         {
             var window = new WindowInteropHelper(this);

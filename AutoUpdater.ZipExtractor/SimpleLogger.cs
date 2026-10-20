@@ -5,27 +5,29 @@ using System.IO;
 namespace AutoUpdater.ZipExtractor
 {
     /// <summary>
-    /// Simple file-based logger that writes to AutoUpdater.ZipExtractor.txt
+    /// Simple file-based logger that writes to AutoUpdater.ZipExtractor.txt in the application directory,
+    /// or in %LocalAppData%\AutoUpdater when the application directory is not writable (e.g. Program Files).
     /// </summary>
     public class SimpleLogger
     {
-        private static readonly string LogFileName = Path.Combine(Misc.GaeBaseDirectory(), "AutoUpdater.ZipExtractor.txt");
+        private const string LogFileNameOnly = "AutoUpdater.ZipExtractor.txt";
+        private static readonly string LogFileName = ResolveLogFileName();
         private static readonly object LockObject = new object();
         private static readonly string EventSourceName = "AutoUpdater.ZipExtractor";
 
-        public SimpleLogger()
+        private static string ResolveLogFileName()
         {
-            // Ensure event source exists
+            string appDirLog = Path.Combine(Misc.GaeBaseDirectory(), LogFileNameOnly);
             try
             {
-                if (!EventLog.SourceExists(EventSourceName))
-                {
-                    EventLog.CreateEventSource(EventSourceName, "Application");
-                }
+                using (new FileStream(appDirLog, FileMode.Append, FileAccess.Write, FileShare.ReadWrite)) { }
+                return appDirLog;
             }
-            catch
+            catch (Exception ex) when (ex is UnauthorizedAccessException || ex is IOException)
             {
-                // Ignore errors during event source creation
+                string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AutoUpdater");
+                Directory.CreateDirectory(dir);
+                return Path.Combine(dir, LogFileNameOnly);
             }
         }
 

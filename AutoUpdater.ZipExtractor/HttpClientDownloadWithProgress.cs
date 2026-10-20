@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AutoUpdater.ZipExtractor
@@ -11,6 +12,10 @@ namespace AutoUpdater.ZipExtractor
         //https://stackoverflow.com/questions/20661652/progress-bar-with-httpclient
         private const int BufferSize = 81920;
         private static readonly TimeSpan ProgressInterval = TimeSpan.FromMilliseconds(200);
+        // HttpClient.Timeout only covers the time until the response headers arrive (ResponseHeadersRead);
+        // reading the body is guarded separately by an idle timeout, so a stalled connection cannot hang forever.
+        private static readonly TimeSpan HeadersTimeout = TimeSpan.FromSeconds(60);
+        private static readonly TimeSpan IdleTimeout = TimeSpan.FromSeconds(60);
 
         private readonly string _downloadUrl;
         private readonly string _destinationFilePath;
@@ -29,7 +34,7 @@ namespace AutoUpdater.ZipExtractor
 
         public async Task StartDownload()
         {
-            _httpClient = new HttpClient { Timeout = TimeSpan.FromDays(1) };
+            _httpClient = new HttpClient { Timeout = HeadersTimeout };
 
             using (var response = await _httpClient.GetAsync(_downloadUrl, HttpCompletionOption.ResponseHeadersRead))
                 await DownloadFileFromHttpResponseMessage(response);
@@ -53,10 +58,11 @@ namespace AutoUpdater.ZipExtractor
             var lastReportElapsed = TimeSpan.Zero;
             var lastReportBytes = 0L;
 
+            using (var idleCts = new CancellationTokenSource())
             using (var fileStream = new FileStream(_destinationFilePath, FileMode.Create, FileAccess.Write, FileShare.None, BufferSize, true))
             {
                 int bytesRead;
-                while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                while ((bytesRead = await ReadWithIdleTimeoutAsync(contentStream, buffer, idleCts)) > 0)
                 {
                     await fileStream.WriteAsync(buffer, 0, bytesRead);
                     totalBytesRead += bytesRead;
@@ -78,6 +84,19 @@ namespace AutoUpdater.ZipExtractor
             if (totalDownloadSize.HasValue && totalBytesRead != totalDownloadSize.Value)
             {
                 throw new IOException($"Incomplete download: received {totalBytesRead} of {totalDownloadSize.Value} bytes.");
+            }
+        }
+
+        private static async Task<int> ReadWithIdleTimeoutAsync(Stream stream, byte[] buffer, CancellationTokenSource idleCts)
+        {
+            idleCts.CancelAfter(IdleTimeout); // restarts the countdown for every read
+            try
+            {
+                return await stream.ReadAsync(buffer.AsMemory(), idleCts.Token);
+            }
+            catch (OperationCanceledException) when (idleCts.IsCancellationRequested)
+            {
+                throw new TimeoutException($"No data received for {IdleTimeout.TotalSeconds:N0} seconds, download aborted.");
             }
         }
 
