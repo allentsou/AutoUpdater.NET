@@ -1,11 +1,10 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>net8.0-windows7.0</TargetFramework>
-		<!--<TargetFrameworks>net48</TargetFrameworks>-->
 		<UseWPF>true</UseWPF>
-		<Version>1.2026.0723.0</Version>
+		<Version>1.2026.1019.0</Version>
 		<PlatformTarget>AnyCPU</PlatformTarget>
 		<DebugType>embedded</DebugType>
 	</PropertyGroup>
@@ -37,9 +36,25 @@
 		<None Update="AutoUpdaterConfig.json">
 			<CopyToOutputDirectory>Never</CopyToOutputDirectory>
 		</None>
-		<None Update="RunILMerge.bat">
-		  <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-		</None>
 	</ItemGroup>
+
+	<!-- Release build: zip the output and copy it to AutoUpdater\Resources, where the AutoUpdater library embeds it. -->
+	<Target Name="PackZipExtractor" AfterTargets="Build" Condition="'$(Configuration)' == 'Release' And !$(MSBuildProjectName.EndsWith('_wpftmp'))">
+		<PropertyGroup>
+			<ZipStagingDir>$(MSBuildProjectDirectory)\$(IntermediateOutputPath)zip-staging\</ZipStagingDir>
+			<ZipTempFile>$(MSBuildProjectDirectory)\$(IntermediateOutputPath)AutoUpdater.ZipExtractor.zip</ZipTempFile>
+			<ZipTargetFile>$(MSBuildProjectDirectory)\..\AutoUpdater\Resources\AutoUpdater.ZipExtractor.zip</ZipTargetFile>
+		</PropertyGroup>
+		<ItemGroup>
+			<FilesToPack Include="$(OutDir)$(TargetName).exe;$(OutDir)$(TargetName).dll;$(OutDir)$(TargetName).deps.json;$(OutDir)$(TargetName).runtimeconfig.json" />
+			<LocalizedFilesToPack Include="$(OutDir)zh-TW\$(TargetName).resources.dll" />
+		</ItemGroup>
+		<RemoveDir Directories="$(ZipStagingDir)" />
+		<Copy SourceFiles="@(FilesToPack)" DestinationFolder="$(ZipStagingDir)" />
+		<Copy SourceFiles="@(LocalizedFilesToPack)" DestinationFolder="$(ZipStagingDir)zh-TW" />
+		<ZipDirectory SourceDirectory="$(ZipStagingDir)" DestinationFile="$(ZipTempFile)" Overwrite="true" />
+		<Copy SourceFiles="$(ZipTempFile)" DestinationFiles="$(ZipTargetFile)" />
+		<Message Importance="high" Text="$(TargetName) packed to $([System.IO.Path]::GetFullPath($(ZipTargetFile)))" />
+	</Target>
 
 </Project>

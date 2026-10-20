@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:AutoUpdater.ZipExtractor"
         xmlns:vm="clr-namespace:AutoUpdater.ZipExtractor.ViewModel"
         mc:Ignorable="d"
-        Title="{Binding WindowTitle}" Height="220" Width="505" ResizeMode="NoResize" WindowStartupLocation="CenterScreen" Topmost="True" WindowStyle="ToolWindow"
+        Title="{Binding WindowTitle}" Height="260" Width="505" ResizeMode="NoResize" WindowStartupLocation="CenterScreen" Topmost="True" WindowStyle="ToolWindow"
         d:DataContext="{d:DesignInstance vm:MainWindowViewModel, IsDesignTimeCreatable=True}" 
         >
     <Grid>
@@ -14,7 +14,11 @@
             <ColumnDefinition Width="100"></ColumnDefinition>
             <ColumnDefinition/>
         </Grid.ColumnDefinitions>
-        <Image Grid.Column="0" VerticalAlignment="Top" Source="./ZipExtractor.png" Margin="0 20" Stretch="None"  />
+        <Grid.RowDefinitions>
+            <RowDefinition Height="200"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+        </Grid.RowDefinitions>
+        <Image Grid.Row="0" Grid.Column="0" VerticalAlignment="Top" Source="./ZipExtractor.png" Margin="0 20" Stretch="None"  />
 
         <Grid Grid.Row="0" Grid.Column="1">
             <Grid.RowDefinitions>
@@ -42,6 +46,19 @@
             </ListBox>
         </Grid>
 
-
+        <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0 0 5 5">
+            <StackPanel.Resources>
+                <Style TargetType="TextBlock">
+                    <Setter Property="Margin">
+                        <Setter.Value>
+                            <Thickness Left="0" Top="0" Right="0" Bottom="0"></Thickness>
+                        </Setter.Value>
+                    </Setter>
+                    <Setter Property="Foreground" Value="Gray"></Setter>
+                </Style>
+            </StackPanel.Resources>
+            <TextBlock Text="AutoUpdater.ZipExtractor Ver."></TextBlock>
+            <TextBlock Text="0.0.0.0" Name="lblVersion"></TextBlock>
+        </StackPanel>
     </Grid>
 </Window>

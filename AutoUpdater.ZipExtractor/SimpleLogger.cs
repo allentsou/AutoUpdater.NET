@@ -1,7 +1,6 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Windows.Xps;
 
 namespace AutoUpdater.ZipExtractor
 {
@@ -10,7 +9,7 @@ namespace AutoUpdater.ZipExtractor
     /// </summary>
     public class SimpleLogger
     {
-        private static readonly string LogFileName = "AutoUpdater.ZipExtractor.txt";
+        private static readonly string LogFileName = Path.Combine(Misc.GaeBaseDirectory(), "AutoUpdater.ZipExtractor.txt");
         private static readonly object LockObject = new object();
         private static readonly string EventSourceName = "AutoUpdater.ZipExtractor";
 

@@ -1,11 +1,11 @@
-<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0-windows7.0</TargetFramework>
     <UseWPF>true</UseWPF>
     <Description>AutoUpdater For .Net Core WPF and WinForm applications</Description>
     <Copyright>鄒瑞成 2021</Copyright>
-    <Version>1.2026.0914.0</Version>
+    <Version>1.2026.1019.0</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageReleaseNotes>First Version</PackageReleaseNotes>
     <Authors>鄒瑞成 2021</Authors>
@@ -16,7 +16,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4258.31" />
     <PackageReference Include="NLog" Version="4.7.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Build order only: a Release build of the extractor refreshes Resources\AutoUpdater.ZipExtractor.zip, which is embedded below. -->
+    <ProjectReference Include="..\AutoUpdater.ZipExtractor\AutoUpdater.ZipExtractor.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>

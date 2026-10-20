@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,8 +30,57 @@ namespace AutoUpdater.ZipExtractor
             process();
         }
 
+        /// <summary>
+        /// Exits the process. If Environment.Exit does not finish within a few seconds (e.g. blocked by a
+        /// finalizer or ProcessExit handler), the process is killed so the updater window never stays open.
+        /// </summary>
+        private static void ExitApplication(int exitCode)
+        {
+            logger.Info($"Exit({exitCode})");
+            var watchdog = new Thread(() =>
+            {
+                Thread.Sleep(5000);
+                logger.Warn("Environment.Exit did not finish within 5 seconds, kill process.");
+                Process.GetCurrentProcess().Kill();
+            })
+            { IsBackground = true, Name = "ExitWatchdog" };
+            watchdog.Start();
+
+            logger.Info($"--------------Call Environment.Exit({exitCode})--------------");
+            Environment.Exit(exitCode);
+        }
+
+        private static void TryDeleteFile(string path)
+        {
+            if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
+            try
+            {
+                logger.Info($"Delete {path}");
+                File.Delete(path);
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, $"Delete {path}");
+            }
+        }
+
 
         private async void process()
+        {
+            try
+            {
+                await ProcessAsync();
+            }
+            catch (Exception ex)
+            {
+                // An unhandled exception in an async void method would crash the process without any message.
+                logger.Error(ex, "Unhandled exception");
+                MessageBox.Show(ex.Message, "", MessageBoxButton.OK, MessageBoxImage.Error);
+                ExitApplication(1);
+            }
+        }
+
+        private async Task ProcessAsync()
         {
             logger.Info($"--------------AutoUpdater.ZipExtractor Start--------------");
 
@@ -46,7 +96,7 @@ namespace AutoUpdater.ZipExtractor
                     logger.Info($"ShowMsgBoxAndExit Msg={msg}");
                     if (MessageBoxResult.OK == MessageBox.Show(window, msg, "", MessageBoxButton.OK, MessageBoxImage.Error))
                     {
-                        Environment.Exit(Environment.ExitCode);
+                        ExitApplication(Environment.ExitCode);
                     }
                 };
 
@@ -90,14 +140,17 @@ namespace AutoUpdater.ZipExtractor
                 }
                 else
                 {
-                    if (!string.IsNullOrWhiteSpace(config.ExtractorInfo.WindowTitle))
+                    config.ExtractorInfo ??= new ExtractorInfoModel();
+                    string title = !string.IsNullOrWhiteSpace(config.ExtractorInfo.WindowTitle)
+                        ? config.ExtractorInfo.WindowTitle
+                        : Localization.LocalizationResources.ResourceManager.GetString("WindowTitle");
+
+                    // Show the version change, e.g. "TestApp2 自動更新 (0.0.0.0 to 0.0.0.1)"
+                    if (!string.IsNullOrWhiteSpace(config.ExtractorInfo.CurrentVersion) && !string.IsNullOrWhiteSpace(config.NewVersion))
                     {
-                        vm.WindowTitle = config.ExtractorInfo.WindowTitle;
+                        title = $"{title.TrimEnd('.', '…', ' ')} ({config.ExtractorInfo.CurrentVersion} to {config.NewVersion})";
                     }
-                    else
-                    {
-                        vm.WindowTitle = Localization.LocalizationResources.ResourceManager.GetString("WindowTitle");
-                    }
+                    vm.WindowTitle = title;
                     logger.Info($"Get config file : {AutoUpdaterConfig.FileName}");
                 }
                 #endregion
@@ -120,45 +173,45 @@ namespace AutoUpdater.ZipExtractor
                         int loopCount = 0;
                         foreach (Process proc in Process.GetProcesses())
                         {
-                            loopCount++;
-                            string procPath = null;
-                            int pid = 0;
-                            try
+                            using (proc)
                             {
-                                procPath = proc.MainModule.FileName;
-                                pid = proc.Id;
-                            }
-                            catch (System.ComponentModel.Win32Exception win32ex)
-                            {
-                                continue;
-                            }
-                            catch (Exception ex)
-                            {
-                                continue;
-                            }
-
-                            try
-                            {
-                                if (procPath == config.ExtractorInfo.ProcessPath)
+                                loopCount++;
+                                string procPath = null;
+                                int pid = 0;
+                                try
                                 {
-                                    isFound = true;
-                                    logger.Info($"WaitForExit,PID={pid},Timeout={timeout},LoopCount={loopCount}");
-                                    vm.AddMsg(string.Format(Localization.LocalizationResources.ResourceManager.GetString("WaitingProcExit"), $"PID {pid}"));
-                                    bool isClose = proc.WaitForExit(timeout);
-                                    if (!isClose)
+                                    // Throws for system/protected processes and for processes of another bitness; just skip those.
+                                    procPath = proc.MainModule.FileName;
+                                    pid = proc.Id;
+                                }
+                                catch (Exception)
+                                {
+                                    continue;
+                                }
+
+                                try
+                                {
+                                    if (string.Equals(procPath, config.ExtractorInfo.ProcessPath, StringComparison.OrdinalIgnoreCase))
                                     {
-                                        logger.Warn($"WaitForExit Timeout, Kill PID {pid}");
-                                        vm.AddMsg(Localization.LocalizationResources.ResourceManager.GetString("ForceKillProc"));
-                                        proc.Kill();
+                                        isFound = true;
+                                        logger.Info($"WaitForExit,PID={pid},Timeout={timeout},LoopCount={loopCount}");
+                                        vm.AddMsg(string.Format(Localization.LocalizationResources.ResourceManager.GetString("WaitingProcExit"), $"PID {pid}"));
+                                        bool isClose = proc.WaitForExit(timeout);
+                                        if (!isClose)
+                                        {
+                                            logger.Warn($"WaitForExit Timeout, Kill PID {pid}");
+                                            vm.AddMsg(Localization.LocalizationResources.ResourceManager.GetString("ForceKillProc"));
+                                            proc.Kill();
+                                            proc.WaitForExit(timeout);
+                                        }
                                     }
                                 }
+                                catch (Exception ex)
+                                {
+                                    logger.Error(ex, $"WaitForExit LoopCount={loopCount}");
+                                    vm.AddMsg(ex.Message, true);
+                                }
                             }
-                            catch (Exception ex)
-                            {
-                                logger.Error(ex, $"WaitForExit LoopCount={loopCount}");
-                                vm.AddMsg(ex.Message, true);
-                            }
-
                         }
                         if (!isFound)
                         {
@@ -195,7 +248,16 @@ namespace AutoUpdater.ZipExtractor
                     vm.AddMsg(string.Format(Localization.LocalizationResources.ResourceManager.GetString("DownloadFile"), config.PackageUrl));
 
                     Uri uri = new Uri(config.PackageUrl);
-                    updateZIPPackageFilePath = Path.Combine(baseDir, System.IO.Path.GetFileName(uri.LocalPath));
+                    if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+                    {
+                        throw new InvalidOperationException($"Unsupported PackageUrl scheme: {uri.Scheme}");
+                    }
+                    string packageFileName = Path.GetFileName(uri.LocalPath);
+                    if (string.IsNullOrWhiteSpace(packageFileName))
+                    {
+                        packageFileName = "AutoUpdaterPackage.zip";
+                    }
+                    updateZIPPackageFilePath = Path.Combine(baseDir, packageFileName);
                     using (HttpClientDownloadWithProgress c = new HttpClientDownloadWithProgress(config.PackageUrl, updateZIPPackageFilePath))
                     {
                         c.ProgressChanged += (long? totalFileSize, long totalBytesDownloaded, double? progressPercentage, double kbPerSeconds) =>
@@ -220,11 +282,26 @@ namespace AutoUpdater.ZipExtractor
                         await c.StartDownload();
                     }
                     logger.Info($"Download done.");
+
+                    if (!string.IsNullOrWhiteSpace(config.PackageSha256))
+                    {
+                        string actualHash;
+                        using (FileStream hashStream = File.OpenRead(updateZIPPackageFilePath))
+                        {
+                            actualHash = Convert.ToHexString(await SHA256.HashDataAsync(hashStream));
+                        }
+                        if (!string.Equals(actualHash, config.PackageSha256.Trim(), StringComparison.OrdinalIgnoreCase))
+                        {
+                            throw new InvalidDataException($"Package SHA-256 mismatch. Expected={config.PackageSha256}, Actual={actualHash}");
+                        }
+                        logger.Info("Package SHA-256 verified.");
+                    }
                 }
                 catch (Exception ex)
                 {
                     logger.Error(ex, $"Download {config.PackageUrl}");
                     vm.AddMsg(ex.Message, true);
+                    TryDeleteFile(updateZIPPackageFilePath);
                     ShowMsgBoxAndExit(ex.Message);
                     return;
                 }
@@ -249,29 +326,23 @@ namespace AutoUpdater.ZipExtractor
                             {
                                 foreach (var entry in zipArch.Entries)
                                 {
-                                    bool isDirectory = (entry.FullName.EndsWith("\\") || entry.FullName.EndsWith("/"));
-                                    if (!isDirectory)
+                                    if (string.IsNullOrEmpty(entry.Name) || Misc.IsUpdaterOwnFile(entry.Name)) continue; // directory entry / updater's own file
+
+                                    string path = Misc.GetSafeExtractPath(baseDir, entry.FullName);
+                                    if (path != null && File.Exists(path))
                                     {
-                                        string path = Path.Combine(baseDir, entry.FullName);
-                                        if (File.Exists(path))
-                                        {
-                                            needBackupFilePath.Add(path);
-                                        }
-                                        else
-                                        {
-                                            Debug.WriteLine(path);
-                                        }
+                                        needBackupFilePath.Add(path);
                                     }
                                 }
                             }
-                            fs.Close();
                         }
 
                         int needBackupFileCount = needBackupFilePath.Count;
                         if (needBackupFileCount > 0)
                         {
-                            Directory.CreateDirectory("AutoUpdaterBackup");
-                            string zipFile = Path.Combine(baseDir, $"AutoUpdaterBackup\\{DateTime.Now:yyyyMMdd_HHmmss}.zip");
+                            string backupDir = Path.Combine(baseDir, "AutoUpdaterBackup");
+                            Directory.CreateDirectory(backupDir);
+                            string zipFile = Path.Combine(backupDir, $"{DateTime.Now:yyyyMMdd_HHmmss}.zip");
                             logger.Info($"Need backup file count : {needBackupFileCount}, Backup path : {zipFile}");
                             int addFileCount = 0;
                             using (FileStream fs = File.Open(zipFile, FileMode.Create, FileAccess.Write))
@@ -285,19 +356,19 @@ namespace AutoUpdater.ZipExtractor
                                         vm.ProgressText = $"{addFileCount} / {needBackupFileCount}";
 
                                         logger.Info($"Adding ({addFileCount}/{needBackupFileCount}) : {bakPath}");
-                                        string removeBaseDirPath = bakPath.Replace(baseDir, "").TrimStart('\\');
-                                        vm.AddMsg(string.Format(Localization.LocalizationResources.ResourceManager.GetString("AddingFile"), removeBaseDirPath));
+                                        // Zip entry names must use '/' as separator.
+                                        string relativePath = Path.GetRelativePath(baseDir, bakPath).Replace('\\', '/');
+                                        vm.AddMsg(string.Format(Localization.LocalizationResources.ResourceManager.GetString("AddingFile"), relativePath));
 
-                                        ZipArchiveEntry entry = zipArch.CreateEntry(removeBaseDirPath);
+                                        ZipArchiveEntry entry = zipArch.CreateEntry(relativePath);
                                         using (var zipStream = entry.Open())
+                                        using (var source = new FileStream(bakPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                                         {
-                                            byte[] bytes = File.ReadAllBytes(bakPath);
-                                            await zipStream.WriteAsync(bytes, 0, bytes.Length);
+                                            await source.CopyToAsync(zipStream);
                                         }
                                         logger.Info($"Done.");
                                     }
                                 }
-                                fs.Close();
                             }
                         }
                         else
@@ -315,7 +386,6 @@ namespace AutoUpdater.ZipExtractor
                 {
                     logger.Error(ex, "Backup");
                     vm.AddMsg(ex.Message, true);
-                    errorCounts++;
                     ShowMsgBoxAndExit(ex.Message);
                     return;
                 }
@@ -340,45 +410,44 @@ namespace AutoUpdater.ZipExtractor
                                 vm.ProgressBarValue = Convert.ToInt32(Convert.ToDouble(extractCount) / Convert.ToDouble(totalCount) * 100d);
                                 vm.ProgressText = $"{extractCount} / {totalCount}";
 
-                                bool isDirectory = (entry.FullName.EndsWith("\\") || entry.FullName.EndsWith("/"));
-                                if (!isDirectory)
+                                if (string.IsNullOrEmpty(entry.Name)) continue; // directory entry
+
+                                if (Misc.IsUpdaterOwnFile(entry.Name))
                                 {
-                                    string path = Path.Combine(baseDir, entry.FullName);
-                                    logger.Info($"Extracting : {path}");
-                                    vm.AddMsg(string.Format(Localization.LocalizationResources.ResourceManager.GetString("ExtractingFile"), entry.FullName));
-                                    try
-                                    {
-                                        string dir = Path.GetDirectoryName(path);
-                                        if (dir != null && !Directory.Exists(dir))
-                                        {
-                                            Directory.CreateDirectory(dir);
-                                        }
-                                        entry.ExtractToFile(path, true);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        logger.Error(ex);
-                                        vm.AddMsg($"{entry.FullName} {ex.Message}", true);
-                                        errorCounts++;
-                                    }
+                                    // Locked by this running process and refreshed by the host library anyway.
+                                    logger.Info($"Skip updater's own file : {entry.FullName}");
+                                    continue;
+                                }
+
+                                string path = Misc.GetSafeExtractPath(baseDir, entry.FullName);
+                                if (path == null)
+                                {
+                                    logger.Error($"Skip entry outside of base directory : {entry.FullName}");
+                                    vm.AddMsg($"{entry.FullName} is outside of the application directory.", true);
+                                    errorCounts++;
+                                    continue;
+                                }
+
+                                logger.Info($"Extracting : {path}");
+                                vm.AddMsg(string.Format(Localization.LocalizationResources.ResourceManager.GetString("ExtractingFile"), entry.FullName));
+                                try
+                                {
+                                    Directory.CreateDirectory(Path.GetDirectoryName(path));
+                                    entry.ExtractToFile(path, true);
                                     logger.Info($"Done.");
+                                }
+                                catch (Exception ex)
+                                {
+                                    logger.Error(ex, $"Extract {path}");
+                                    vm.AddMsg($"{entry.FullName} {ex.Message}", true);
+                                    errorCounts++;
                                 }
                             }
                         }
-                        fs.Close();
                     }
                     logger.Info($"Extractor done.");
 
-                    try
-                    {
-                        logger.Info($"Delete {updateZIPPackageFilePath}");
-                        File.Delete(updateZIPPackageFilePath);
-                        logger.Info($"Delete done.");
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.Error(ex, $"Delete {updateZIPPackageFilePath}");
-                    }
+                    TryDeleteFile(updateZIPPackageFilePath);
                 }
                 catch (Exception ex)
                 {
@@ -392,9 +461,21 @@ namespace AutoUpdater.ZipExtractor
 
                 if (config.ExtractorInfo.ProcessPath != null && File.Exists(config.ExtractorInfo.ProcessPath))
                 {
-                    //string fn = Path.GetFileName(config.ExtractorInfo.ProcessPath);
                     logger.Info($"Start {config.ExtractorInfo.ProcessPath}");
-                    Process.Start(config.ExtractorInfo.ProcessPath);
+                    try
+                    {
+                        var psi = new ProcessStartInfo(config.ExtractorInfo.ProcessPath)
+                        {
+                            WorkingDirectory = Path.GetDirectoryName(config.ExtractorInfo.ProcessPath)
+                        };
+                        using (Process.Start(psi)) { }
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.Error(ex, $"Start {config.ExtractorInfo.ProcessPath}");
+                        vm.AddMsg(ex.Message, true);
+                        errorCounts++;
+                    }
                 }
                 else
                 {
@@ -403,7 +484,6 @@ namespace AutoUpdater.ZipExtractor
 
                 if (errorCounts > 0)
                 {
-                    vm.AddMsg(string.Format(Localization.LocalizationResources.ResourceManager.GetString("ErrorCountMsg"), errorCounts), true);
                     config.ExtractorInfo.IsExtractSuccess = false;
                 }
                 else
@@ -414,7 +494,11 @@ namespace AutoUpdater.ZipExtractor
                 config.ExtractorInfo.ExtractTime = DateTime.Now;
                 AutoUpdaterConfig.Save(config);
 
-                vm.AddMsg("Done");
+                string doneMsg = errorCounts > 0
+                    ? $"Done - {string.Format(Localization.LocalizationResources.ResourceManager.GetString("ErrorCountMsg"), errorCounts)}"
+                    : "Done";
+                vm.AddMsg(doneMsg, errorCounts > 0);
+                logger.Info(doneMsg);
                 logger.Info($"--------------AutoUpdater.ZipExtractor Close--------------");
                 //#if !DEBUG
                 if (errorCounts > 0)
@@ -425,7 +509,7 @@ namespace AutoUpdater.ZipExtractor
                 {
                     await Task.Delay(1500);
                 }
-                Environment.Exit(Environment.ExitCode);
+                ExitApplication(Environment.ExitCode);
                 //#endif
             });
         }

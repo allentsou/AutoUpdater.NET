@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -8,6 +9,9 @@ namespace AutoUpdater.ZipExtractor
     public class HttpClientDownloadWithProgress : IDisposable
     {
         //https://stackoverflow.com/questions/20661652/progress-bar-with-httpclient
+        private const int BufferSize = 81920;
+        private static readonly TimeSpan ProgressInterval = TimeSpan.FromMilliseconds(200);
+
         private readonly string _downloadUrl;
         private readonly string _destinationFilePath;
 
@@ -44,56 +48,51 @@ namespace AutoUpdater.ZipExtractor
         private async Task ProcessContentStream(long? totalDownloadSize, Stream contentStream)
         {
             var totalBytesRead = 0L;
-            var readCount = 0L;
-            var buffer = new byte[8192];
-            var isMoreToRead = true;
+            var buffer = new byte[BufferSize];
+            var stopwatch = Stopwatch.StartNew();
+            var lastReportElapsed = TimeSpan.Zero;
+            var lastReportBytes = 0L;
 
-            using (var fileStream = new FileStream(_destinationFilePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
+            using (var fileStream = new FileStream(_destinationFilePath, FileMode.Create, FileAccess.Write, FileShare.None, BufferSize, true))
             {
-                lastTriggerProgressChangedTime = DateTime.Now;
-                do
+                int bytesRead;
+                while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
                 {
-                    var bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length);
-                    if (bytesRead == 0)
-                    {
-                        isMoreToRead = false;
-                        TriggerProgressChanged(totalDownloadSize, totalBytesRead);
-                        continue;
-                    }
-
                     await fileStream.WriteAsync(buffer, 0, bytesRead);
-
                     totalBytesRead += bytesRead;
-                    readCount += 1;
 
-                    if (readCount % 100 == 0)
-                        TriggerProgressChanged(totalDownloadSize, totalBytesRead);
+                    var elapsed = stopwatch.Elapsed;
+                    if (elapsed - lastReportElapsed >= ProgressInterval)
+                    {
+                        TriggerProgressChanged(totalDownloadSize, totalBytesRead, totalBytesRead - lastReportBytes, elapsed - lastReportElapsed);
+                        lastReportElapsed = elapsed;
+                        lastReportBytes = totalBytesRead;
+                    }
                 }
-                while (isMoreToRead);
-                fileStream.Flush();
-                fileStream.Close();
+                await fileStream.FlushAsync();
+
+                var finalElapsed = stopwatch.Elapsed;
+                TriggerProgressChanged(totalDownloadSize, totalBytesRead, totalBytesRead - lastReportBytes, finalElapsed - lastReportElapsed);
+            }
+
+            if (totalDownloadSize.HasValue && totalBytesRead != totalDownloadSize.Value)
+            {
+                throw new IOException($"Incomplete download: received {totalBytesRead} of {totalDownloadSize.Value} bytes.");
             }
         }
 
-        DateTime lastTriggerProgressChangedTime = DateTime.Now;
-        long lastTriggerBytesRead = 0;
-        private void TriggerProgressChanged(long? totalDownloadSize, long totalBytesRead)
+        private void TriggerProgressChanged(long? totalDownloadSize, long totalBytesRead, long diffBytes, TimeSpan diffTime)
         {
             if (ProgressChanged == null)
                 return;
 
-
             double? progressPercentage = null;
-            if (totalDownloadSize.HasValue)
+            if (totalDownloadSize.HasValue && totalDownloadSize.Value > 0)
                 progressPercentage = Math.Round((double)totalBytesRead / totalDownloadSize.Value * 100, 2);
 
+            double kbPerSeconds = diffTime.TotalSeconds > 0 ? diffBytes / diffTime.TotalSeconds / 1024 : 0;
 
-            long diffBytes = totalBytesRead - lastTriggerBytesRead;
-            double KBPerSeconds = Convert.ToDouble(diffBytes) / (DateTime.Now - lastTriggerProgressChangedTime).TotalSeconds / 1024;
-
-            lastTriggerProgressChangedTime = DateTime.Now;
-            lastTriggerBytesRead = totalBytesRead;
-            ProgressChanged(totalDownloadSize, totalBytesRead, progressPercentage, Math.Round(KBPerSeconds, 1));
+            ProgressChanged(totalDownloadSize, totalBytesRead, progressPercentage, Math.Round(kbPerSeconds, 1));
         }
 
         public void Dispose()

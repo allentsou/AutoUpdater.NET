@@ -2,7 +2,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using System.Windows;
 
 namespace AutoUpdater.ZipExtractor.ViewModel
@@ -47,6 +46,7 @@ namespace AutoUpdater.ZipExtractor.ViewModel
             get => windowTitle;
             set
             {
+                if (Equals(windowTitle, value)) return;
                 windowTitle = value;
                 RaiseNotifyPropertyChanged();
             }
@@ -57,6 +57,7 @@ namespace AutoUpdater.ZipExtractor.ViewModel
             get => progressText;
             set
             {
+                if (Equals(progressText, value)) return;
                 progressText = value;
                 RaiseNotifyPropertyChanged();
             }
@@ -70,6 +71,7 @@ namespace AutoUpdater.ZipExtractor.ViewModel
             get => progressBarValue;
             set
             {
+                if (Equals(progressBarValue, value)) return;
                 progressBarValue = value;
                 RaiseNotifyPropertyChanged();
             }
@@ -79,6 +81,7 @@ namespace AutoUpdater.ZipExtractor.ViewModel
             get => currentStep;
             set
             {
+                if (Equals(currentStep, value)) return;
                 currentStep = value;
                 RaiseNotifyPropertyChanged();
             }
@@ -112,13 +115,19 @@ namespace AutoUpdater.ZipExtractor.ViewModel
                 FileList.Add(new FileItemData() { Msg = $"{DateTime.Now:HH:mm:ss} {msg}", IsError = isError });
             };
 
-            if (Application.Current.Dispatcher.Thread == Thread.CurrentThread)
+            RunOnUiThread(action);
+        }
+
+        private static void RunOnUiThread(Action action)
+        {
+            var dispatcher = Application.Current.Dispatcher;
+            if (dispatcher.CheckAccess())
             {
                 action();
             }
             else
             {
-                Application.Current.Dispatcher.Invoke(action, null);
+                dispatcher.Invoke(action);
             }
         }
 
@@ -126,23 +135,8 @@ namespace AutoUpdater.ZipExtractor.ViewModel
         public event PropertyChangedEventHandler PropertyChanged;
         protected void RaiseNotifyPropertyChanged([CallerMemberName] string propName = "")
         {
-            Action action = () =>
-            {
-                //https://docs.microsoft.com/zh-tw/archive/msdn-magazine/2016/july/data-binding-a-better-way-to-implement-data-binding-in-net
-                if (PropertyChanged != null)
-                {
-                    PropertyChanged(this, new PropertyChangedEventArgs(propName));
-                }
-            };
-
-            if (Application.Current.Dispatcher.Thread == Thread.CurrentThread)
-            {
-                action();
-            }
-            else
-            {
-                Application.Current.Dispatcher.Invoke(action, null);
-            }
+            //https://docs.microsoft.com/zh-tw/archive/msdn-magazine/2016/july/data-binding-a-better-way-to-implement-data-binding-in-net
+            RunOnUiThread(() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName)));
         }
         #endregion
 

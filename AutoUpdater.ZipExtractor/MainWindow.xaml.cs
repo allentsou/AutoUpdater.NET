@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Specialized;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
@@ -20,7 +21,24 @@ namespace AutoUpdater.ZipExtractor
         public MainWindow()
         {
             InitializeComponent();
+            lblVersion.Text = GetVersionText();
             this.Loaded += MainWindow_Loaded;
+        }
+
+        /// <summary>
+        /// The &lt;Version&gt; of the project (e.g. 1.2026.0723.0). The informational version keeps the leading zeros
+        /// that the numeric assembly version drops; a "+commit" suffix added by the SDK is removed.
+        /// </summary>
+        private static string GetVersionText()
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+            string version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            if (string.IsNullOrWhiteSpace(version))
+            {
+                return assembly.GetName().Version?.ToString() ?? "";
+            }
+            int plus = version.IndexOf('+');
+            return plus >= 0 ? version.Substring(0, plus) : version;
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -48,6 +66,8 @@ namespace AutoUpdater.ZipExtractor
 
         private void Incc_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
+            if (e.Action != NotifyCollectionChangedAction.Add || e.NewItems == null || e.NewItems.Count == 0) return;
+
             listFiles.ScrollIntoView(e.NewItems[0]);
             listFiles.SelectedItem = e.NewItems[0];
         }

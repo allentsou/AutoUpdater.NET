@@ -1,12 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Net.Http;
-using System.Text;
 
 namespace AutoUpdater
 {
     public static class MyHttpClient
     {
-        public static readonly HttpClient HttpClient = new HttpClient();
+        // The default 100 seconds would freeze the calling UI thread for too long when the server is unreachable.
+        public static readonly HttpClient HttpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
     }
 }

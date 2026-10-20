@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:AutoUpdater"
         xmlns:loc="clr-namespace:AutoUpdater.Localization"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         mc:Ignorable="d"
         Title="{x:Static loc:LocalizationResources.WindowTitle}" Height="800" Width="750" ResizeMode="NoResize" WindowStartupLocation="CenterScreen" Topmost="True" >
     <Grid>
@@ -30,8 +31,12 @@
             </StackPanel>
         </StackPanel>
         
-        <WebBrowser x:Name="chgLogBrowser" Grid.Row="1">
-        </WebBrowser>
+        <wv2:WebView2 x:Name="chgLogBrowser" Grid.Row="1" />
+
+        <!-- Shown instead of the WebView2 control when the WebView2 Runtime is not available -->
+        <TextBlock x:Name="chgLogFallback" Grid.Row="1" Visibility="Collapsed" Margin="20" FontSize="14" TextWrapping="Wrap">
+            <Hyperlink x:Name="chgLogLink" RequestNavigate="chgLogLink_RequestNavigate" />
+        </TextBlock>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Grid.Row="2">
             <Button Content="{x:Static loc:LocalizationResources.ButtonIgnore}" FontSize="18" Width="140" Margin="0 0 80 0" Name="btnIgnore"></Button>
