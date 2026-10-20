@@ -12,8 +12,8 @@ namespace AutoUpdater.ZipExtractor
         //https://stackoverflow.com/questions/20661652/progress-bar-with-httpclient
         private const int BufferSize = 81920;
         private static readonly TimeSpan ProgressInterval = TimeSpan.FromMilliseconds(200);
-        // HttpClient.Timeout only covers the time until the response headers arrive (ResponseHeadersRead);
-        // reading the body is guarded separately by an idle timeout, so a stalled connection cannot hang forever.
+        // 使用 ResponseHeadersRead 時，HttpClient.Timeout 只涵蓋到收到回應標頭為止；
+        // 讀取內容另外用閒置逾時保護，連線卡住時才不會永遠等下去。
         private static readonly TimeSpan HeadersTimeout = TimeSpan.FromSeconds(60);
         private static readonly TimeSpan IdleTimeout = TimeSpan.FromSeconds(60);
 
@@ -89,7 +89,7 @@ namespace AutoUpdater.ZipExtractor
 
         private static async Task<int> ReadWithIdleTimeoutAsync(Stream stream, byte[] buffer, CancellationTokenSource idleCts)
         {
-            idleCts.CancelAfter(IdleTimeout); // restarts the countdown for every read
+            idleCts.CancelAfter(IdleTimeout); // 每次讀取都重新開始倒數
             try
             {
                 return await stream.ReadAsync(buffer.AsMemory(), idleCts.Token);

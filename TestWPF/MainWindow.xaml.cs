@@ -41,7 +41,7 @@ namespace TestWPF
 
         private async void btnStartUpdateAsync_Click(object sender, RoutedEventArgs e)
         {
-            // The UI stays responsive while the config is downloaded.
+            // 下載設定檔期間 UI 仍可操作。
             var window = new WindowInteropHelper(this);
             btnStartUpdateAsync.IsEnabled = false;
             try

@@ -16,9 +16,9 @@ namespace AutoUpdater.ZipExtractor
         }
 
         /// <summary>
-        /// True for the updater's own files (AutoUpdater.ZipExtractor.dll, .deps.json, zh-TW\AutoUpdater.ZipExtractor.resources.dll ...).
-        /// They are locked while the extractor is running and are refreshed by the host library on every update anyway,
-        /// so a package that accidentally contains them (e.g. zipped from the output folder) must not try to overwrite them.
+        /// 判斷是否為更新程式自己的檔案（AutoUpdater.ZipExtractor.dll、.deps.json、zh-TW\AutoUpdater.ZipExtractor.resources.dll 等）。
+        /// 這些檔案在 extractor 執行時會被鎖住，而且函式庫每次更新都會重新放出，
+        /// 所以更新包不小心包含它們時（例如直接壓縮輸出資料夾），不可嘗試覆寫。
         /// </summary>
         public static bool IsUpdaterOwnFile(string fileName)
         {
@@ -26,7 +26,7 @@ namespace AutoUpdater.ZipExtractor
         }
 
         /// <summary>
-        /// Combines baseDir and a zip entry name, returning null when the result would land outside baseDir (zip-slip).
+        /// 合併 baseDir 與 zip 項目名稱；結果若落在 baseDir 之外（zip-slip）則回傳 null。
         /// </summary>
         public static string GetSafeExtractPath(string baseDir, string entryFullName)
         {

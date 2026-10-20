@@ -33,7 +33,7 @@
         
         <wv2:WebView2 x:Name="chgLogBrowser" Grid.Row="1" />
 
-        <!-- Shown instead of the WebView2 control when the WebView2 Runtime is not available -->
+        <!-- 沒有 WebView2 Runtime 時，以此取代 WebView2 控制項顯示 -->
         <TextBlock x:Name="chgLogFallback" Grid.Row="1" Visibility="Collapsed" Margin="20" FontSize="14" TextWrapping="Wrap">
             <Hyperlink x:Name="chgLogLink" RequestNavigate="chgLogLink_RequestNavigate" />
         </TextBlock>

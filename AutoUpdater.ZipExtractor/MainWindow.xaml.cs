@@ -26,8 +26,8 @@ namespace AutoUpdater.ZipExtractor
         }
 
         /// <summary>
-        /// The &lt;Version&gt; of the project (e.g. 1.2026.0723.0). The informational version keeps the leading zeros
-        /// that the numeric assembly version drops; a "+commit" suffix added by the SDK is removed.
+        /// 專案的 &lt;Version&gt;（例如 1.2026.0723.0）。資訊版本會保留數字版本去掉的前導 0；
+        /// SDK 自動加上的「+commit」後綴會被移除。
         /// </summary>
         private static string GetVersionText()
         {

@@ -35,10 +35,10 @@ namespace AutoUpdater
         }
 
         /// <summary>
-        /// Shows the change log in the WebView2 control, or a clickable link when the WebView2 Runtime is not installed.
+        /// 在 WebView2 控制項顯示更新說明；未安裝 WebView2 Runtime 時改顯示可點擊的連結。
         /// </summary>
-        /// <param name="navigateUri">Address to load (contains a cache-busting parameter).</param>
-        /// <param name="displayUri">Address shown to the user in the fallback link.</param>
+        /// <param name="navigateUri">要載入的網址（含避開快取的參數）。</param>
+        /// <param name="displayUri">備援連結顯示給使用者的網址。</param>
         public void SetChangeLog(Uri navigateUri, Uri displayUri)
         {
             changeLogNavigateUri = navigateUri;
@@ -60,13 +60,13 @@ namespace AutoUpdater
         {
             try
             {
-                // The default user data folder is next to the exe, which is often not writable (e.g. Program Files).
+                // 預設的使用者資料資料夾在 exe 旁邊，常常沒有寫入權限（例如 Program Files）。
                 string userDataFolder = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AutoUpdater", "WebView2");
                 var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
                 await chgLogBrowser.EnsureCoreWebView2Async(env);
 
-                // Always fetch the page and its CSS/JS/images from the server instead of the cache.
+                // 頁面及其 CSS/JS/圖片一律從伺服器取得，不使用快取。
                 await chgLogBrowser.CoreWebView2.CallDevToolsProtocolMethodAsync("Network.enable", "{}");
                 await chgLogBrowser.CoreWebView2.CallDevToolsProtocolMethodAsync("Network.setCacheDisabled", "{\"cacheDisabled\":true}");
 
@@ -74,7 +74,7 @@ namespace AutoUpdater
             }
             catch (Exception ex)
             {
-                // Typically WebView2RuntimeNotFoundException: fall back to a link that opens the default browser.
+                // 通常是 WebView2RuntimeNotFoundException：改顯示用預設瀏覽器開啟的連結。
                 logger.Warn(ex, "WebView2 is not available, show link instead.");
                 ShowChangeLogFallback();
             }

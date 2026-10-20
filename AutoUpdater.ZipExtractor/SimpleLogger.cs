@@ -5,12 +5,15 @@ using System.IO;
 namespace AutoUpdater.ZipExtractor
 {
     /// <summary>
-    /// Simple file-based logger that writes to AutoUpdater.ZipExtractor.txt in the application directory,
-    /// or in %LocalAppData%\AutoUpdater when the application directory is not writable (e.g. Program Files).
+    /// 簡易檔案 logger，寫入程式目錄的 AutoUpdater.ZipExtractor.txt；
+    /// 程式目錄無法寫入時（例如 Program Files）改寫到 %LocalAppData%\AutoUpdater。
     /// </summary>
     public class SimpleLogger
     {
         private const string LogFileNameOnly = "AutoUpdater.ZipExtractor.txt";
+        // 啟動時 log 超過此大小就改名為 AutoUpdater.ZipExtractor.1.txt（取代上一份），
+        // 因此最多保留兩個約 1 MB 的檔案。
+        private const long MaxLogSize = 1024 * 1024;
         private static readonly string LogFileName = ResolveLogFileName();
         private static readonly object LockObject = new object();
         private static readonly string EventSourceName = "AutoUpdater.ZipExtractor";
@@ -20,6 +23,7 @@ namespace AutoUpdater.ZipExtractor
             string appDirLog = Path.Combine(Misc.GaeBaseDirectory(), LogFileNameOnly);
             try
             {
+                RotateIfTooLarge(appDirLog);
                 using (new FileStream(appDirLog, FileMode.Append, FileAccess.Write, FileShare.ReadWrite)) { }
                 return appDirLog;
             }
@@ -27,7 +31,29 @@ namespace AutoUpdater.ZipExtractor
             {
                 string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AutoUpdater");
                 Directory.CreateDirectory(dir);
-                return Path.Combine(dir, LogFileNameOnly);
+                string localLog = Path.Combine(dir, LogFileNameOnly);
+                RotateIfTooLarge(localLog);
+                return localLog;
+            }
+        }
+
+        /// <summary>
+        /// 只在啟動時執行一次（extractor 執行時間短且只有單一實例），所以寫入過程中不會換檔。
+        /// </summary>
+        private static void RotateIfTooLarge(string path)
+        {
+            try
+            {
+                var info = new FileInfo(path);
+                if (info.Exists && info.Length > MaxLogSize)
+                {
+                    string backupPath = Path.Combine(info.DirectoryName, Path.GetFileNameWithoutExtension(path) + ".1" + info.Extension);
+                    File.Move(path, backupPath, true);
+                }
+            }
+            catch (Exception)
+            {
+                // 例如檔案正被編輯器開啟：繼續附加寫入，下次啟動再試。
             }
         }
 

@@ -5,7 +5,7 @@
     <UseWPF>true</UseWPF>
     <Description>AutoUpdater For .Net Core WPF and WinForm applications</Description>
     <Copyright>鄒瑞成 2021</Copyright>
-    <Version>1.2026.1020.0</Version>
+    <Version>1.2026.1020.1</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageReleaseNotes>First Version</PackageReleaseNotes>
     <Authors>鄒瑞成 2021</Authors>
@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Build order only: a Release build of the extractor refreshes Resources\AutoUpdater.ZipExtractor.zip, which is embedded below. -->
+    <!-- 只用來決定建置順序：extractor 的 Release 建置會更新 Resources\AutoUpdater.ZipExtractor.zip，再由本專案內嵌。 -->
     <ProjectReference Include="..\AutoUpdater.ZipExtractor\AutoUpdater.ZipExtractor.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 

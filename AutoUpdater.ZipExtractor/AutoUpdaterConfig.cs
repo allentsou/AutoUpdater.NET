@@ -38,7 +38,7 @@ namespace AutoUpdater.ZipExtractor
 
         public static void Save(AutoUpdaterConfig config)
         {
-            // Write to a temp file and swap it in, so a crash or kill never leaves a half-written JSON behind.
+            // 先寫入暫存檔再取代，程式中途崩潰或被終結時也不會留下寫到一半的 JSON。
             string path = FilePath;
             string tempPath = path + ".tmp";
             File.WriteAllText(tempPath, JsonSerializer.Serialize(config, SaveOptions));
@@ -52,7 +52,7 @@ namespace AutoUpdater.ZipExtractor
         public string CurrentVersion { get; set; }
         public string ProcessPath { get; set; }
         /// <summary>
-        /// PID of the application to wait for. 0 when written by an older library (then ProcessPath is matched instead).
+        /// 要等待結束的主程式 PID。舊版函式庫寫入的設定檔為 0，此時改用 ProcessPath 比對。
         /// </summary>
         public int ProcessId { get; set; }
         public bool IsExtractSuccess { get; set; }

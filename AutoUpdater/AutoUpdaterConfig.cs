@@ -19,7 +19,7 @@ namespace AutoUpdater
         public string NewVersion { get; set; }
         public string PackageUrl { get; set; }
         /// <summary>
-        /// Optional. Hex SHA-256 of the package. When set, the extractor refuses to install a package that does not match.
+        /// 選填。更新包的 SHA-256（十六進位）。有設定時，雜湊不符的更新包會被 extractor 拒絕安裝。
         /// </summary>
         public string PackageSha256 { get; set; }
         public string ChangeLogUrl { get; set; }
@@ -29,7 +29,7 @@ namespace AutoUpdater
         public ExtractorInfoModel ExtractorInfo { get; set; } = new ExtractorInfoModel();
 
         /// <summary>
-        /// Full path of the local config file (next to the application, independent of the current directory).
+        /// 本機設定檔的完整路徑（在程式目錄下，不受目前工作目錄影響）。
         /// </summary>
         private static string FilePath => Path.Combine(AutoUpdater.GaeBaseDirectory(), FileName);
 
@@ -57,7 +57,7 @@ namespace AutoUpdater
 
         public static void Save(AutoUpdaterConfig config)
         {
-            // Write to a temp file and swap it in, so a crash or kill never leaves a half-written JSON behind.
+            // 先寫入暫存檔再取代，程式中途崩潰或被終結時也不會留下寫到一半的 JSON。
             string path = FilePath;
             string tempPath = path + ".tmp";
             File.WriteAllText(tempPath, JsonSerializer.Serialize(config, SaveOptions));
@@ -71,7 +71,7 @@ namespace AutoUpdater
         public string CurrentVersion { get; set; }
         public string ProcessPath { get; set; }
         /// <summary>
-        /// PID of the application to wait for. 0 when written by an older library (then ProcessPath is matched instead).
+        /// 要等待結束的主程式 PID。舊版函式庫寫入的設定檔為 0，此時改用 ProcessPath 比對。
         /// </summary>
         public int ProcessId { get; set; }
         public bool IsExtractSuccess { get; set; }

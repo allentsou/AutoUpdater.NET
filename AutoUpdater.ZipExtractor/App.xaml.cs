@@ -31,8 +31,8 @@ namespace AutoUpdater.ZipExtractor
         }
 
         /// <summary>
-        /// Exits the process. If Environment.Exit does not finish within a few seconds (e.g. blocked by a
-        /// finalizer or ProcessExit handler), the process is killed so the updater window never stays open.
+        /// 結束程式。若 Environment.Exit 在數秒內沒有完成（例如被 finalizer 或 ProcessExit 處理常式卡住），
+        /// 就直接終結行程，避免更新視窗一直留著。
         /// </summary>
         private static void ExitApplication(int exitCode)
         {
@@ -51,7 +51,7 @@ namespace AutoUpdater.ZipExtractor
         }
 
         /// <summary>
-        /// Waits for the application with the given PID (written by the library) to exit.
+        /// 等待指定 PID 的主程式（由函式庫寫入設定檔）結束。
         /// </summary>
         private static void WaitForAppExitByPid(int pid, int timeout, MainWindowViewModel vm)
         {
@@ -68,7 +68,7 @@ namespace AutoUpdater.ZipExtractor
 
             using (proc)
             {
-                // Guard against PID reuse: the application started this extractor, so it must have started earlier.
+                // 防止 PID 被重複使用：主程式啟動了 extractor，所以它的啟動時間一定比較早。
                 try
                 {
                     using (Process self = Process.GetCurrentProcess())
@@ -82,7 +82,7 @@ namespace AutoUpdater.ZipExtractor
                 }
                 catch (Exception ex)
                 {
-                    // StartTime is not accessible for e.g. elevated processes; assume it is the application.
+                    // 系統管理員權限等程序無法讀取 StartTime，此時視為就是主程式。
                     logger.Warn($"Cannot read StartTime of PID {pid}: {ex.Message}");
                 }
 
@@ -126,7 +126,7 @@ namespace AutoUpdater.ZipExtractor
             }
             catch (Exception ex)
             {
-                // An unhandled exception in an async void method would crash the process without any message.
+                // async void 方法中未處理的例外會讓程式直接崩潰，而且沒有任何訊息。
                 logger.Error(ex, "Unhandled exception");
                 MessageBox.Show(ex.Message, "", MessageBoxButton.OK, MessageBoxImage.Error);
                 ExitApplication(1);
@@ -198,7 +198,7 @@ namespace AutoUpdater.ZipExtractor
                         ? config.ExtractorInfo.WindowTitle
                         : Localization.LocalizationResources.ResourceManager.GetString("WindowTitle");
 
-                    // Show the version change, e.g. "TestApp2 自動更新 (0.0.0.0 to 0.0.0.1)"
+                    // 標題顯示版本變化，例如「TestApp2 自動更新 (0.0.0.0 到 0.0.0.1)」
                     if (!string.IsNullOrWhiteSpace(config.ExtractorInfo.CurrentVersion) && !string.IsNullOrWhiteSpace(config.NewVersion))
                     {
                         string versionChange = string.Format(Localization.LocalizationResources.ResourceManager.GetString("VersionChange"),
@@ -239,7 +239,7 @@ namespace AutoUpdater.ZipExtractor
                                 int pid = 0;
                                 try
                                 {
-                                    // Throws for system/protected processes and for processes of another bitness; just skip those.
+                                    // 系統或受保護的程序、不同位元數的程序會拋出例外，直接略過。
                                     procPath = proc.MainModule.FileName;
                                     pid = proc.Id;
                                 }
@@ -376,7 +376,7 @@ namespace AutoUpdater.ZipExtractor
                             {
                                 foreach (var entry in zipArch.Entries)
                                 {
-                                    if (string.IsNullOrEmpty(entry.Name) || Misc.IsUpdaterOwnFile(entry.Name)) continue; // directory entry / updater's own file
+                                    if (string.IsNullOrEmpty(entry.Name) || Misc.IsUpdaterOwnFile(entry.Name)) continue; // 資料夾項目或更新程式自己的檔案
 
                                     string path = Misc.GetSafeExtractPath(baseDir, entry.FullName);
                                     if (path != null && File.Exists(path))
@@ -406,7 +406,7 @@ namespace AutoUpdater.ZipExtractor
                                         vm.ProgressText = $"{addFileCount} / {needBackupFileCount}";
 
                                         logger.Info($"Adding ({addFileCount}/{needBackupFileCount}) : {bakPath}");
-                                        // Zip entry names must use '/' as separator.
+                                        // Zip 項目名稱必須用 '/' 當分隔符號。
                                         string relativePath = Path.GetRelativePath(baseDir, bakPath).Replace('\\', '/');
                                         vm.AddMsg(string.Format(Localization.LocalizationResources.ResourceManager.GetString("AddingFile"), relativePath));
 
@@ -460,11 +460,11 @@ namespace AutoUpdater.ZipExtractor
                                 vm.ProgressBarValue = Convert.ToInt32(Convert.ToDouble(extractCount) / Convert.ToDouble(totalCount) * 100d);
                                 vm.ProgressText = $"{extractCount} / {totalCount}";
 
-                                if (string.IsNullOrEmpty(entry.Name)) continue; // directory entry
+                                if (string.IsNullOrEmpty(entry.Name)) continue; // 資料夾項目
 
                                 if (Misc.IsUpdaterOwnFile(entry.Name))
                                 {
-                                    // Locked by this running process and refreshed by the host library anyway.
+                                    // 這些檔案正被本程式使用而鎖住，而且函式庫每次更新都會重新放出，所以略過。
                                     logger.Info($"Skip updater's own file : {entry.FullName}");
                                     continue;
                                 }
@@ -509,7 +509,7 @@ namespace AutoUpdater.ZipExtractor
                 }
                 #endregion
 
-                // Save the result before restarting the application, so it can read it at startup.
+                // 在重新啟動主程式之前先寫入更新結果，讓主程式啟動時就能讀到。
                 config.ExtractorInfo.IsExtractSuccess = errorCounts == 0;
                 config.ExtractorInfo.ExtractTime = DateTime.Now;
                 try

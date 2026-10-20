@@ -6,7 +6,7 @@ namespace AutoUpdater.ZipExtractor
 {
     public class ErrorColorConverter : IValueConverter
     {
-        static readonly Brush brushRed = Brushes.Red; // Brushes.* are frozen, so they are safe to share
+        static readonly Brush brushRed = Brushes.Red; // Brushes.* 已凍結，可以安全共用
         public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
         {
             if (value is bool booleanValue)

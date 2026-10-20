@@ -4,7 +4,7 @@
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>net8.0-windows7.0</TargetFramework>
 		<UseWPF>true</UseWPF>
-		<Version>1.2026.1020.0</Version>
+		<Version>1.2026.1020.1</Version>
 		<PlatformTarget>AnyCPU</PlatformTarget>
 		<DebugType>embedded</DebugType>
 	</PropertyGroup>
@@ -38,7 +38,7 @@
 		</None>
 	</ItemGroup>
 
-	<!-- Release build: zip the output and copy it to AutoUpdater\Resources, where the AutoUpdater library embeds it. -->
+	<!-- Release 建置後：把輸出壓縮成 zip 並複製到 AutoUpdater\Resources，供 AutoUpdater 函式庫內嵌。 -->
 	<Target Name="PackZipExtractor" AfterTargets="Build" Condition="'$(Configuration)' == 'Release' And !$(MSBuildProjectName.EndsWith('_wpftmp'))">
 		<PropertyGroup>
 			<ZipStagingDir>$(MSBuildProjectDirectory)\$(IntermediateOutputPath)zip-staging\</ZipStagingDir>

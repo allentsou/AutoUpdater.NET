@@ -31,11 +31,11 @@ namespace AutoUpdater
         static string zipExtractorPath = null;
 
         /// <summary>
-        /// Checks for a new version and shows the update window when there is one.
-        /// Must be called on the UI (STA) thread, and blocks it while the remote config is downloaded;
-        /// <see cref="CheckUpdateAsync"/> does neither.
+        /// 檢查是否有新版本，有的話顯示更新視窗。
+        /// 必須在 UI（STA）執行緒呼叫，下載遠端設定檔期間會卡住該執行緒；
+        /// <see cref="CheckUpdateAsync"/> 沒有這兩個限制。
         /// </summary>
-        /// <returns>True when a new version is available (the update window was shown or the update started).</returns>
+        /// <returns>有新版本時回傳 true（已顯示更新視窗或已開始更新）。</returns>
         public static bool CheckUpdate(string configURL, IntPtr? windowHandle = null, bool forceUpdate = false, string appName = null, byte[] appIcon = null, string appIconUri = null)
         {
             AutoUpdaterConfig config;
@@ -52,11 +52,11 @@ namespace AutoUpdater
         }
 
         /// <summary>
-        /// Same as <see cref="CheckUpdate"/>, but downloads the remote config without blocking the calling thread
-        /// and can be called from any thread: the update window is always shown on a UI thread.
-        /// Completes after the update window has been closed.
+        /// 與 <see cref="CheckUpdate"/> 相同，但下載遠端設定檔時不會卡住呼叫端的執行緒，
+        /// 而且可從任何執行緒呼叫：更新視窗一律在 UI 執行緒顯示。
+        /// 更新視窗關閉後才會完成。
         /// </summary>
-        /// <returns>True when a new version is available (the update window was shown or the update started).</returns>
+        /// <returns>有新版本時回傳 true（已顯示更新視窗或已開始更新）。</returns>
         public static async Task<bool> CheckUpdateAsync(string configURL, IntPtr? windowHandle = null, bool forceUpdate = false, string appName = null, byte[] appIcon = null, string appIconUri = null)
         {
             SynchronizationContext callerContext = SynchronizationContext.Current;
@@ -75,8 +75,8 @@ namespace AutoUpdater
         }
 
         /// <summary>
-        /// Runs func on a UI (STA) thread: the WPF application's dispatcher, otherwise the caller's UI context
-        /// (e.g. WinForms), otherwise a dedicated STA thread.
+        /// 在 UI（STA）執行緒執行 func：優先用 WPF 應用程式的 Dispatcher，其次用呼叫端的 UI 內容
+        /// （例如 WinForms），都沒有時另開一條專用的 STA 執行緒。
         /// </summary>
         private static Task<bool> RunOnUiThreadAsync(SynchronizationContext callerContext, Func<bool> func)
         {
@@ -93,7 +93,7 @@ namespace AutoUpdater
                 catch (Exception ex) { tcs.SetException(ex); }
             }
 
-            // The base SynchronizationContext just posts to the thread pool (MTA), which cannot host a WPF window.
+            // 基底 SynchronizationContext 只會丟到執行緒集區（MTA），無法顯示 WPF 視窗。
             if (callerContext != null && callerContext.GetType() != typeof(SynchronizationContext))
             {
                 callerContext.Post(_ => Run(), null);
@@ -122,7 +122,7 @@ namespace AutoUpdater
                 {
                     throw new InvalidOperationException("Remote config file is empty.");
                 }
-                // ExtractorInfo is local state; never carry over values (e.g. an old IsExtractSuccess) from the remote file.
+                // ExtractorInfo 是本機狀態，不沿用遠端設定檔帶來的值（例如舊的 IsExtractSuccess）。
                 config.ExtractorInfo = new ExtractorInfoModel();
                 Version newVersion = new Version(config.NewVersion);
 
@@ -135,7 +135,7 @@ namespace AutoUpdater
                 }
                 logger.Info($"Has new version.(Current={currentVersion},New={newVersion})");
 
-                // Fail early here instead of after the application has been closed.
+                // 在這裡就先報錯，而不是等主程式關閉後才失敗。
                 if (!TryGetHttpUri(config.PackageUrl, out _))
                 {
                     throw new InvalidOperationException($"Invalid PackageUrl: {config.PackageUrl}");
@@ -153,7 +153,7 @@ namespace AutoUpdater
                 config.ExtractorInfo.CurrentVersion = currentVersion.ToString();
                 string processPath = Environment.ProcessPath;
                 config.ExtractorInfo.ProcessPath = processPath != null ? Path.Combine(baseDir, Path.GetFileName(processPath)) : null;
-                // The extractor waits for this PID; matching by path fails for e.g. "dotnet app.dll" or short/\\?\ paths.
+                // extractor 會等待這個 PID 結束；用路徑比對在 "dotnet app.dll"、8.3 短路徑或 \\?\ 路徑時會失敗。
                 config.ExtractorInfo.ProcessId = Environment.ProcessId;
 
                 AutoUpdaterConfig.Save(config);
@@ -206,13 +206,13 @@ namespace AutoUpdater
             Uri changeLogUri = null;
             if (!string.IsNullOrWhiteSpace(config.ChangeLogUrl) && !TryGetHttpUri(config.ChangeLogUrl, out changeLogUri))
             {
-                // An invalid change log URL must not prevent the update itself; just show no change log.
+                // 更新說明網址無效時不可影響更新本身，只是不顯示更新說明。
                 logger.Warn($"ChangeLogUrl is not a valid http(s) URL, change log is hidden: {config.ChangeLogUrl}");
             }
             if (changeLogUri != null)
             {
-                // Append a timestamp to bypass the cache. UriBuilder keeps an existing query string and #fragment intact.
-                // The form additionally disables the WebView2 cache for the page's CSS/JS/images.
+                // 加上時間戳避開快取。UriBuilder 會保留原有的查詢字串與 #fragment。
+                // 更新視窗另外會停用 WebView2 快取，連頁面的 CSS/JS/圖片也不使用快取。
                 var builder = new UriBuilder(changeLogUri);
                 string query = builder.Query.TrimStart('?');
                 builder.Query = (query.Length > 0 ? query + "&" : "") + $"t={DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
@@ -247,7 +247,7 @@ namespace AutoUpdater
                 }
                 else
                 {
-                    // Never pass the URL through cmd.exe: characters like '&' would be interpreted as shell commands.
+                    // 不可透過 cmd.exe 開啟網址：'&' 等字元會被當成指令執行。
                     using (Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true })) { }
                 }
             }
@@ -264,9 +264,9 @@ namespace AutoUpdater
         }
 
         /// <summary>
-        /// Extracts the embedded AutoUpdater.ZipExtractor package next to the application and returns the path of its exe.
-        /// Throws when a file is missing afterwards (e.g. no write permission), so the error surfaces here instead of
-        /// when the user clicks "Update".
+        /// 將內嵌的 AutoUpdater.ZipExtractor 解壓到程式目錄，並回傳其 exe 路徑。
+        /// 解壓後若有檔案不存在（例如沒有寫入權限）就拋出例外，讓錯誤在這裡就出現，
+        /// 而不是等使用者按下「更新」才發生。
         /// </summary>
         private static string ExtractZipExtractor(string baseDir)
         {
@@ -280,7 +280,7 @@ namespace AutoUpdater
             {
                 foreach (var entry in zipArch.Entries)
                 {
-                    if (string.IsNullOrEmpty(entry.Name)) continue; // directory entry
+                    if (string.IsNullOrEmpty(entry.Name)) continue; // 資料夾項目
 
                     string path = Path.GetFullPath(Path.Combine(fullBaseDir, entry.FullName));
                     if (!path.StartsWith(baseDirWithSeparator, StringComparison.OrdinalIgnoreCase))
@@ -296,7 +296,7 @@ namespace AutoUpdater
                     }
                     catch (Exception ex)
                     {
-                        // A file locked by a still running extractor is fine as long as it exists.
+                        // 檔案被仍在執行的 extractor 鎖住沒關係，只要檔案存在即可。
                         logger.Error(ex, $"Extract {path}");
                         if (!File.Exists(path))
                         {
@@ -367,8 +367,8 @@ namespace AutoUpdater
             try
             {
                 logger.Info($"Start {zipExtractorPath}");
-                // Use the full path and set the working directory so the extractor finds AutoUpdaterConfig.json
-                // no matter what the current directory of the host application is.
+                // 使用完整路徑並設定工作目錄，不論主程式目前的工作目錄為何，
+                // extractor 都能找到 AutoUpdaterConfig.json。
                 var psi = new ProcessStartInfo(zipExtractorPath) { WorkingDirectory = Path.GetDirectoryName(zipExtractorPath) };
                 using (Process.Start(psi)) { }
 
@@ -391,10 +391,9 @@ namespace AutoUpdater
         }
 
         /// <summary>
-        /// Closes the host application. A WPF application is shut down normally (windows close and the Exit event
-        /// runs, so it can save its data); other hosts are ended with Environment.Exit. Because the extractor cannot
-        /// overwrite files of a running application, a watchdog still calls Environment.Exit if the normal shutdown
-        /// has not finished after 10 seconds.
+        /// 關閉主程式。WPF 應用程式會正常關閉（視窗會關閉、Exit 事件會執行，可以存檔）；
+        /// 其他類型的主程式則用 Environment.Exit 結束。由於 extractor 無法覆寫執行中程式的檔案，
+        /// 正常關閉 10 秒後仍未結束時，監看執行緒會再呼叫 Environment.Exit。
         /// </summary>
         private static void ExitApplication()
         {
