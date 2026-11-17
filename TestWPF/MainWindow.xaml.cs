@@ -13,6 +13,10 @@ namespace TestWPF
         {
             InitializeComponent();
 
+            // 指定更新視窗與 extractor 的語系（只影響 AutoUpdater，不會改變本程式的語系）；
+            // 不設定時依 Windows 顯示語言，目前內建 zh-TW 與英文。
+            //AutoUpdater.AutoUpdater.Culture = new System.Globalization.CultureInfo("zh-TW");
+            //AutoUpdater.AutoUpdater.Culture = new System.Globalization.CultureInfo("en-US");
         }
 
         private void btnSaveConfig_Click(object sender, RoutedEventArgs e)
@@ -31,8 +35,9 @@ namespace TestWPF
 
 
             //Set Icon 2
+            //.ico的建置動作要設為 "資源" 才抓得到
             AutoUpdater.AutoUpdater.CheckUpdate("http://172.24.26.38/Deploy/update/AutoUpdateCoreTest/AutoUpdaterConfig.json", window.Handle, false, "TestApp2",
-                appIconUri: "pack://application:,,,/Resources/Icon_Main.ico");
+                appIconUri: "pack://application:,,,/Resources/MainIcon.ico");
 
 
             //No Icom

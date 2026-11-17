@@ -4,7 +4,7 @@
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>net8.0-windows7.0</TargetFramework>
 		<UseWPF>true</UseWPF>
-		<Version>1.2026.1020.1</Version>
+		<Version>1.2026.1117.0</Version>
 		<PlatformTarget>AnyCPU</PlatformTarget>
 		<DebugType>embedded</DebugType>
 	</PropertyGroup>
@@ -30,6 +30,12 @@
 			<Generator>PublicResXFileCodeGenerator</Generator>
 			<LastGenOutput>LocalizationResources.Designer.cs</LastGenOutput>
 		</EmbeddedResource>
+		<!-- 語系資源直接內嵌在主組件，不產生 zh-TW\AutoUpdater.ZipExtractor.resources.dll 附屬組件。
+		     執行時由 EmbeddedCultureResourceManager 從主組件讀取。新增語系時照這個格式加一筆。 -->
+		<EmbeddedResource Update="Localization\LocalizationResources.zh-TW.resx">
+			<WithCulture>false</WithCulture>
+			<LogicalName>AutoUpdater.ZipExtractor.Localization.LocalizationResources.zh-TW.resources</LogicalName>
+		</EmbeddedResource>
 	</ItemGroup>
 
 	<ItemGroup>
@@ -47,11 +53,9 @@
 		</PropertyGroup>
 		<ItemGroup>
 			<FilesToPack Include="$(OutDir)$(TargetName).exe;$(OutDir)$(TargetName).dll;$(OutDir)$(TargetName).deps.json;$(OutDir)$(TargetName).runtimeconfig.json" />
-			<LocalizedFilesToPack Include="$(OutDir)zh-TW\$(TargetName).resources.dll" />
 		</ItemGroup>
 		<RemoveDir Directories="$(ZipStagingDir)" />
 		<Copy SourceFiles="@(FilesToPack)" DestinationFolder="$(ZipStagingDir)" />
-		<Copy SourceFiles="@(LocalizedFilesToPack)" DestinationFolder="$(ZipStagingDir)zh-TW" />
 		<ZipDirectory SourceDirectory="$(ZipStagingDir)" DestinationFile="$(ZipTempFile)" Overwrite="true" />
 		<Copy SourceFiles="$(ZipTempFile)" DestinationFiles="$(ZipTargetFile)" />
 		<Message Importance="high" Text="$(TargetName) packed to $([System.IO.Path]::GetFullPath($(ZipTargetFile)))" />

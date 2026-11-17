@@ -1,0 +1,59 @@
+﻿<Project>
+  <!--
+    Publish 完成後自動部署更新檔：
+      1. 把 publish 輸出壓縮成 <AssemblyName>_<AssemblyVersion>.zip
+      2. 上傳到 FTP
+      3. 下載 FTP 上的 AutoUpdaterConfig.json，更新 NewVersion 與 PackageUrl 後上傳回去
+    只有在 Publish 設定檔（.pubxml）設定了 AutoUpdaterFtpUrl 與 AutoUpdaterBaseUrl 時才會執行：
+      <AutoUpdaterFtpUrl>ftp://伺服器/資料夾/</AutoUpdaterFtpUrl>
+      <AutoUpdaterBaseUrl>用戶端下載用的 http 網址/</AutoUpdaterBaseUrl>
+    FTP 帳號密碼從 Windows 環境變數 AUTOUPDATER_FTP_USER、AUTOUPDATER_FTP_PASSWORD 讀取，不寫在專案檔裡。
+    FTP 上只保留最新的 AutoUpdaterKeepVersions 個版本的更新包（預設 5，設為 0 則不清理）。
+    不想放進更新包的檔案（例如各機器不同的設定檔）設定在 AutoUpdaterExcludeFiles，
+    以分號分隔，路徑相對於 publish 資料夾，可用萬用字元：
+      <AutoUpdaterExcludeFiles>TestWPF.dll.config;appsettings.json;**\*.pdb</AutoUpdaterExcludeFiles>
+    要和更新包一起上傳到 FTP 的其他檔案（例如 ChangeLog.html）設定在 AutoUpdaterUploadFiles，
+    以分號分隔，路徑相對於專案資料夾，可用萬用字元；上傳到 FTP 資料夾根目錄，同名檔案會被覆蓋：
+      <AutoUpdaterUploadFiles>ChangeLog.html;ChangeLog\*.png</AutoUpdaterUploadFiles>
+  -->
+  <PropertyGroup>
+    <AutoUpdaterConfigFileName Condition="'$(AutoUpdaterConfigFileName)' == ''">AutoUpdaterConfig.json</AutoUpdaterConfigFileName>
+    <AutoUpdaterKeepVersions Condition="'$(AutoUpdaterKeepVersions)' == ''">5</AutoUpdaterKeepVersions>
+  </PropertyGroup>
+
+  <Target Name="AutoUpdaterDeploy" AfterTargets="Publish" Condition="'$(AutoUpdaterFtpUrl)' != '' And '$(AutoUpdaterBaseUrl)' != ''">
+    <PropertyGroup>
+      <!-- 用戶端以 AssemblyVersion 判斷是否需要更新，所以設定檔的 NewVersion 也用它 -->
+      <_AutoUpdaterVersion>$(AssemblyVersion)</_AutoUpdaterVersion>
+      <_AutoUpdaterVersion Condition="'$(_AutoUpdaterVersion)' == ''">$(Version)</_AutoUpdaterVersion>
+      <_AutoUpdaterPublishDir>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine($(MSBuildProjectDirectory), $(PublishDir)))))</_AutoUpdaterPublishDir>
+      <_AutoUpdaterWorkDir>$(MSBuildProjectDirectory)\$(IntermediateOutputPath)autoupdater-deploy\</_AutoUpdaterWorkDir>
+      <_AutoUpdaterZip>$(_AutoUpdaterWorkDir)$(AssemblyName)_$(_AutoUpdaterVersion).zip</_AutoUpdaterZip>
+      <!-- 在每個排除項目前面加上 publish 資料夾路徑，並去掉分號前後的空白與換行。
+           屬性函式回傳的分號會被跳脫成 %3B，要用 Unescape 還原，Exclude 才會把它當成多個項目 -->
+      <_AutoUpdaterUserExclude>$([MSBuild]::Unescape($([System.Text.RegularExpressions.Regex]::Replace(';$(AutoUpdaterExcludeFiles.Trim())', '\s*;\s*', ';$(_AutoUpdaterPublishDir)'))))</_AutoUpdaterUserExclude>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <!-- 排除更新程式自己的檔案、本機設定檔、log 與備份，這些不該出現在更新包裡 -->
+      <_AutoUpdaterFile Include="$(_AutoUpdaterPublishDir)**\*"
+                        Exclude="$(_AutoUpdaterPublishDir)**\AutoUpdater.ZipExtractor.*;$(_AutoUpdaterPublishDir)$(AutoUpdaterConfigFileName)*;$(_AutoUpdaterPublishDir)AutoUpdaterBackup\**;$(_AutoUpdaterPublishDir)Log\**;$(_AutoUpdaterPublishDir)*.zip$(_AutoUpdaterUserExclude)" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <_AutoUpdaterUploadFile Include="$(AutoUpdaterUploadFiles)" />
+    </ItemGroup>
+
+    <Error Condition="'@(_AutoUpdaterFile)' == ''" Text="AutoUpdater: 發行資料夾 $(_AutoUpdaterPublishDir) 裡沒有任何檔案" />
+    <!-- 沒設定 AutoUpdaterUploadFiles 時，批次處理仍會以空值執行一次，所以要先排除空值 -->
+    <Error Condition="'%(_AutoUpdaterUploadFile.FullPath)' != '' And !Exists('%(_AutoUpdaterUploadFile.FullPath)')" Text="AutoUpdater: 找不到 AutoUpdaterUploadFiles 指定的檔案 %(_AutoUpdaterUploadFile.FullPath)" />
+
+    <RemoveDir Directories="$(_AutoUpdaterWorkDir)" />
+    <Copy SourceFiles="@(_AutoUpdaterFile)" DestinationFiles="@(_AutoUpdaterFile->'$(_AutoUpdaterWorkDir)files\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <ZipDirectory SourceDirectory="$(_AutoUpdaterWorkDir)files" DestinationFile="$(_AutoUpdaterZip)" Overwrite="true" />
+    <Message Importance="high" Text="AutoUpdater: 已打包 $(_AutoUpdaterZip)" />
+
+    <!-- 帳號密碼由腳本從環境變數讀取，所以不會出現在這行指令與建置 log 中 -->
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)AutoUpdater.Deploy.ps1&quot; -ZipPath &quot;$(_AutoUpdaterZip)&quot; -FtpUrl &quot;$(AutoUpdaterFtpUrl)&quot; -BaseUrl &quot;$(AutoUpdaterBaseUrl)&quot; -Version &quot;$(_AutoUpdaterVersion)&quot; -ConfigFileName &quot;$(AutoUpdaterConfigFileName)&quot; -KeepVersions $(AutoUpdaterKeepVersions) -UploadFiles &quot;@(_AutoUpdaterUploadFile->'%(FullPath)', '|')&quot;" />
+  </Target>
+</Project>

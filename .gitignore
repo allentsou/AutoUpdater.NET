@@ -184,7 +184,6 @@ publish/
 *.azurePubxml
 # Note: Comment the next line if you want to checkin your web deploy settings,
 # but database connection strings (with potential passwords) will be unencrypted
-*.pubxml
 *.publishproj
 
 # Microsoft Azure Web App publish settings. Comment the next line if you want to
@@ -361,3 +360,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# 更新說明頁內容不進版控，只在 Publish 時由 AutoUpdaterUploadFiles 上傳
+TestWPF/ChangeLog.html

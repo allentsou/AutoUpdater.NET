@@ -55,6 +55,10 @@ namespace AutoUpdater.ZipExtractor
         /// 要等待結束的主程式 PID。舊版函式庫寫入的設定檔為 0，此時改用 ProcessPath 比對。
         /// </summary>
         public int ProcessId { get; set; }
+        /// <summary>
+        /// 更新視窗使用的語系（例如 zh-TW、en-US），與主程式一致。空白時依 Windows 顯示語言。
+        /// </summary>
+        public string UICulture { get; set; }
         public bool IsExtractSuccess { get; set; }
         public DateTime ExtractTime { get; set; }
     }

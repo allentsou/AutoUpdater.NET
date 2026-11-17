@@ -4,19 +4,19 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows7.0</TargetFramework>
     <UseWPF>true</UseWPF>
-    <Version>1.2021.1008.0</Version>
+    <Version>1.2021.1009.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Resources\Icon_Main.ico" />
+    <None Remove="Resources\MainIcon.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\MainIcon.ico" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\AutoUpdater\AutoUpdater.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Resource Include="Resources\Icon_Main.ico" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,6 +26,10 @@
     <None Update="NLog.config">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
@@ -33,6 +37,11 @@
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\Settings.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
   </ItemGroup>
 
@@ -42,5 +51,9 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
+
+  <!-- TestWPF 以專案參考引用 AutoUpdater，不會自動匯入 NuGet 套件裡的部署 targets，所以手動匯入。
+       用 NuGet 套件引用 AutoUpdater 的專案不需要這行。 -->
+  <Import Project="..\AutoUpdater\build\AutoUpdater.targets" />
 
 </Project>

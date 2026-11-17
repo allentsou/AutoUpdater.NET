@@ -1,6 +1,7 @@
 ﻿using NLog;
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Reflection;
@@ -29,6 +30,21 @@ namespace AutoUpdater
 
         static UpdateForm form = null;
         static string zipExtractorPath = null;
+
+        /// <summary>
+        /// 更新視窗與 extractor 使用的語系，例如 <c>new CultureInfo("zh-TW")</c>、<c>new CultureInfo("en-US")</c>。
+        /// 只影響 AutoUpdater，不會改變主程式的語系。
+        /// 預設 null：跟隨呼叫 CheckUpdate 時執行緒的 CurrentUICulture（未另外設定時就是 Windows 顯示語言）。
+        /// 目前內建 zh-TW 與英文，其他語系顯示英文。
+        /// </summary>
+        public static CultureInfo Culture
+        {
+            get => Localization.LocalizationResources.Culture;
+            set => Localization.LocalizationResources.Culture = value;
+        }
+
+        private static string GetText(string name) =>
+            Localization.LocalizationResources.ResourceManager.GetString(name, Culture);
 
         /// <summary>
         /// 檢查是否有新版本，有的話顯示更新視窗。
@@ -149,12 +165,14 @@ namespace AutoUpdater
                     var titleAttribute = mainAssembly.GetCustomAttribute<AssemblyTitleAttribute>();
                     appName = titleAttribute != null ? titleAttribute.Title : mainAssembly.GetName().Name;
                 }
-                config.ExtractorInfo.WindowTitle = $"{appName} {Localization.LocalizationResources.ResourceManager.GetString("AutoUpdating")}";
+                config.ExtractorInfo.WindowTitle = $"{appName} {GetText("AutoUpdating")}";
                 config.ExtractorInfo.CurrentVersion = currentVersion.ToString();
                 string processPath = Environment.ProcessPath;
                 config.ExtractorInfo.ProcessPath = processPath != null ? Path.Combine(baseDir, Path.GetFileName(processPath)) : null;
                 // extractor 會等待這個 PID 結束；用路徑比對在 "dotnet app.dll"、8.3 短路徑或 \\?\ 路徑時會失敗。
                 config.ExtractorInfo.ProcessId = Environment.ProcessId;
+                // extractor 是另一個行程，要把語系寫進設定檔，兩個視窗的語言才會一致
+                config.ExtractorInfo.UICulture = (Culture ?? CultureInfo.CurrentUICulture).Name;
 
                 AutoUpdaterConfig.Save(config);
 
@@ -177,9 +195,9 @@ namespace AutoUpdater
         private static void ShowUpdateForm(AutoUpdaterConfig config, string appName, Version currentVersion, IntPtr? windowHandle, byte[] appIcon, string appIconUri)
         {
             form = new UpdateForm();
-            form.Title = string.Format(Localization.LocalizationResources.ResourceManager.GetString("WindowTitle"), appName, config.NewVersion);//{0} {1} is available!
-            form.Title1.Text = string.Format(Localization.LocalizationResources.ResourceManager.GetString("Title1"), appName);//A new version of {0} is available!
-            form.Title2.Text = string.Format(Localization.LocalizationResources.ResourceManager.GetString("Title2"), appName, config.NewVersion, currentVersion);//{0} {1} is now available. You have version {2} installed. Would you like to download it now?
+            form.Title = string.Format(GetText("WindowTitle"), appName, config.NewVersion);//{0} {1} is available!
+            form.Title1.Text = string.Format(GetText("Title1"), appName);//A new version of {0} is available!
+            form.Title2.Text = string.Format(GetText("Title2"), appName, config.NewVersion, currentVersion);//{0} {1} is now available. You have version {2} installed. Would you like to download it now?
             try
             {
                 if (appIcon != null)
@@ -221,8 +239,9 @@ namespace AutoUpdater
             else
             {
                 form.chgLogBrowser.Visibility = Visibility.Hidden;
-                form.Height = form.row1.Height.Value + form.row3.Height.Value + 50;
+                // 標題列高度會隨文字換行改變，所以讓視窗依內容決定高度
                 form.row2.Height = new GridLength(0, GridUnitType.Pixel);
+                form.SizeToContent = SizeToContent.Height;
             }
             if (windowHandle != null)
             {

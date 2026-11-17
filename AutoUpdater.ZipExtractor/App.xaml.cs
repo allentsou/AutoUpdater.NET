@@ -31,6 +31,26 @@ namespace AutoUpdater.ZipExtractor
         }
 
         /// <summary>
+        /// 改用主程式指定的語系（由函式庫寫入設定檔）。設定 DefaultThreadCurrentUICulture，
+        /// UI 執行緒與背景執行緒讀取的字串才會一致。名稱空白或無效時維持 Windows 顯示語言。
+        /// </summary>
+        private static void ApplyUICulture(string cultureName)
+        {
+            if (string.IsNullOrWhiteSpace(cultureName)) return;
+            try
+            {
+                var culture = System.Globalization.CultureInfo.GetCultureInfo(cultureName);
+                System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = culture;
+                System.Globalization.CultureInfo.CurrentUICulture = culture;
+                logger.Info($"UICulture = {culture.Name}");
+            }
+            catch (System.Globalization.CultureNotFoundException ex)
+            {
+                logger.Warn($"Invalid UICulture '{cultureName}': {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// 結束程式。若 Environment.Exit 在數秒內沒有完成（例如被 finalizer 或 ProcessExit 處理常式卡住），
         /// 就直接終結行程，避免更新視窗一直留著。
         /// </summary>
@@ -194,6 +214,7 @@ namespace AutoUpdater.ZipExtractor
                 else
                 {
                     config.ExtractorInfo ??= new ExtractorInfoModel();
+                    ApplyUICulture(config.ExtractorInfo.UICulture);
                     string title = !string.IsNullOrWhiteSpace(config.ExtractorInfo.WindowTitle)
                         ? config.ExtractorInfo.WindowTitle
                         : Localization.LocalizationResources.ResourceManager.GetString("WindowTitle");
