@@ -1,11 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0-windows7.0</TargetFramework>
+    <!-- 同一個 NuGet 套件支援 .NET 8、9、10 的程式。
+         Visual Studio 2022 只能用 .NET 9 SDK，無法建置 .NET 10，所以只有使用 .NET 10 SDK 建置時
+         （dotnet CLI 或 Visual Studio 2026）才加入 net10。沒有 net10 版本時，.NET 10 的程式會使用 net9 版本，一樣可以執行。 -->
+    <TargetFrameworks>net8.0-windows7.0;net9.0-windows7.0</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::VersionGreaterThanOrEquals('$(NETCoreSdkVersion)', '10.0'))">$(TargetFrameworks);net10.0-windows7.0</TargetFrameworks>
     <UseWPF>true</UseWPF>
     <Description>AutoUpdater For .Net Core WPF and WinForm applications</Description>
     <Copyright>鄒瑞成 2021</Copyright>
-    <Version>1.2026.1117.2</Version>
+    <Version>1.2026.1118.0</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageReleaseNotes>First Version</PackageReleaseNotes>
     <Authors>鄒瑞成 2021</Authors>
@@ -31,8 +35,10 @@
 
   <ItemGroup>
     <!-- Publish 後自動部署到 FTP；放進 NuGet 套件的 build 與 buildTransitive，引用本套件的專案會自動匯入 -->
-    <None Update="build\AutoUpdater.targets" Pack="true" PackagePath="build\AutoUpdater.targets;buildTransitive\AutoUpdater.targets" />
-    <None Update="build\AutoUpdater.Deploy.ps1" Pack="true" PackagePath="build\AutoUpdater.Deploy.ps1;buildTransitive\AutoUpdater.Deploy.ps1" />
+    <!-- 多目標建置時打包在外層建置進行，預設的 None 項目不一定存在，所以先移除再明確加入 -->
+    <None Remove="build\**" />
+    <None Include="build\AutoUpdater.targets" Pack="true" PackagePath="build\AutoUpdater.targets;buildTransitive\AutoUpdater.targets" />
+    <None Include="build\AutoUpdater.Deploy.ps1" Pack="true" PackagePath="build\AutoUpdater.Deploy.ps1;buildTransitive\AutoUpdater.Deploy.ps1" />
   </ItemGroup>
 
   <ItemGroup>

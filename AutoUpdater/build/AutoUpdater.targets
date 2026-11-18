@@ -15,11 +15,36 @@
     要和更新包一起上傳到 FTP 的其他檔案（例如 ChangeLog.html）設定在 AutoUpdaterUploadFiles，
     以分號分隔，路徑相對於專案資料夾，可用萬用字元；上傳到 FTP 資料夾根目錄，同名檔案會被覆蓋：
       <AutoUpdaterUploadFiles>ChangeLog.html;ChangeLog\*.png</AutoUpdaterUploadFiles>
+    Publish 前會先清空 publish 資料夾，避免上次留下的舊檔案被打包進更新包；
+    不想清空時設定 <AutoUpdaterCleanPublishDir>false</AutoUpdaterCleanPublishDir>。
   -->
   <PropertyGroup>
     <AutoUpdaterConfigFileName Condition="'$(AutoUpdaterConfigFileName)' == ''">AutoUpdaterConfig.json</AutoUpdaterConfigFileName>
     <AutoUpdaterKeepVersions Condition="'$(AutoUpdaterKeepVersions)' == ''">5</AutoUpdaterKeepVersions>
+    <AutoUpdaterCleanPublishDir Condition="'$(AutoUpdaterCleanPublishDir)' == ''">true</AutoUpdaterCleanPublishDir>
   </PropertyGroup>
+
+  <!-- 只在有設定自動部署的 Publish 設定檔清空 publish 資料夾。在複製 publish 檔案之前執行，不影響已完成的 Build 輸出。 -->
+  <Target Name="AutoUpdaterCleanPublishFolder" BeforeTargets="PrepareForPublish"
+          Condition="'$(AutoUpdaterFtpUrl)' != '' And '$(AutoUpdaterBaseUrl)' != '' And '$(AutoUpdaterCleanPublishDir)' == 'true'">
+    <PropertyGroup>
+      <_AutoUpdaterCleanDir>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine($(MSBuildProjectDirectory), $(PublishDir)))))</_AutoUpdaterCleanDir>
+      <_AutoUpdaterCleanDir>$([MSBuild]::EnsureTrailingSlash($(_AutoUpdaterCleanDir)))</_AutoUpdaterCleanDir>
+      <_AutoUpdaterCleanDirU>$(_AutoUpdaterCleanDir.ToUpperInvariant())</_AutoUpdaterCleanDirU>
+      <_AutoUpdaterProjectDirU>$([MSBuild]::EnsureTrailingSlash($(MSBuildProjectDirectory)).ToUpperInvariant())</_AutoUpdaterProjectDirU>
+      <_AutoUpdaterOutDirU>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine($(MSBuildProjectDirectory), $(OutDir)))).ToUpperInvariant())</_AutoUpdaterOutDirU>
+      <_AutoUpdaterOutDirU>$([MSBuild]::EnsureTrailingSlash($(_AutoUpdaterOutDirU)))</_AutoUpdaterOutDirU>
+      <!-- 安全檢查：publish 資料夾是磁碟根目錄、專案資料夾本身或其上層、或包含 Build 輸出時不清空，避免誤刪 -->
+      <_AutoUpdaterCleanUnsafe Condition="'$([System.IO.Path]::GetPathRoot($(_AutoUpdaterCleanDir)).ToUpperInvariant())' == '$(_AutoUpdaterCleanDirU)'">true</_AutoUpdaterCleanUnsafe>
+      <_AutoUpdaterCleanUnsafe Condition="$(_AutoUpdaterProjectDirU.StartsWith('$(_AutoUpdaterCleanDirU)'))">true</_AutoUpdaterCleanUnsafe>
+      <_AutoUpdaterCleanUnsafe Condition="$(_AutoUpdaterOutDirU.StartsWith('$(_AutoUpdaterCleanDirU)'))">true</_AutoUpdaterCleanUnsafe>
+    </PropertyGroup>
+
+    <Warning Condition="'$(_AutoUpdaterCleanUnsafe)' == 'true'"
+             Text="AutoUpdater: publish 資料夾 $(_AutoUpdaterCleanDir) 是磁碟根目錄、專案資料夾或包含 Build 輸出，為了安全不自動清空。建議把 PublishDir 改成獨立的資料夾。" />
+    <RemoveDir Condition="'$(_AutoUpdaterCleanUnsafe)' != 'true' And Exists('$(_AutoUpdaterCleanDir)')" Directories="$(_AutoUpdaterCleanDir)" />
+    <Message Condition="'$(_AutoUpdaterCleanUnsafe)' != 'true'" Importance="high" Text="AutoUpdater: 已清空 publish 資料夾 $(_AutoUpdaterCleanDir)" />
+  </Target>
 
   <Target Name="AutoUpdaterDeploy" AfterTargets="Publish" Condition="'$(AutoUpdaterFtpUrl)' != '' And '$(AutoUpdaterBaseUrl)' != ''">
     <PropertyGroup>

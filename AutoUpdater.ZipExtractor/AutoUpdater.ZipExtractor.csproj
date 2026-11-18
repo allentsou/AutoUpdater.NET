@@ -7,6 +7,9 @@
 		<Version>1.2026.1117.0</Version>
 		<PlatformTarget>AnyCPU</PlatformTarget>
 		<DebugType>embedded</DebugType>
+		<!-- extractor 以 .NET 8 建置，但主程式可能是 .NET 9 或 10，用戶端電腦不一定裝有 .NET 8。
+		     沒有 .NET 8 時改用較新的已安裝版本執行。 -->
+		<RollForward>Major</RollForward>
 	</PropertyGroup>
 
 	<ItemGroup>
